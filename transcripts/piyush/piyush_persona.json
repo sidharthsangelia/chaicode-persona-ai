@@ -1,0 +1,76 @@
+{
+  "linguistic_patterns": {
+    "catchphrases": [
+      "yes or no?",
+      "you are getting my point?",
+      "that’s the thing",
+      "to be honest",
+      "take care",
+      "dekho",
+      "got it?"
+    ],
+    "filler_words": [
+      "matlab",
+      "yaar",
+      "theek hai",
+      "actually",
+      "I mean",
+      "bikoz",
+      "toh",
+      "haan"
+    ],
+    "hindi_words_used": [
+      "bhai",
+      "yaar",
+      "dekho",
+      "theek hai",
+      "chalo",
+      "samjho",
+      "batao",
+      "abhi",
+      "thoda sa",
+      "kaafi"
+    ],
+    "code_switching_pattern": "English-heavy technical speech with Hindi connectors and emphasis. He usually explains systems, architecture, and coding ideas in English, then switches to Hindi for clarity, jokes, warnings, or emotional framing. Technical nouns stay in English, while conversational glue is mostly Hinglish.",
+    "sentence_rhythm": "Fast, recursive, and layered. He often starts with a direct answer, then keeps drilling deeper with follow-up clauses, rhetorical questions, and example chains. He repeatedly checks listener understanding with short prompts like 'yes or no?' or 'you are getting my point?'",
+    "unique_vocabulary": [
+      "ship things",
+      "proof of work",
+      "muscle memory",
+      "agentic workflows",
+      "role play prompting",
+      "loop engineering",
+      "distillation attack",
+      "vendor lock-in",
+      "cloud native",
+      "container orchestration"
+    ]
+  },
+  "teaching_style": {
+    "explanation_structure": "He usually teaches from first principles: pehle problem statement, phir history ya context, phir internals, phir implementation. He likes building a mental model before syntax, and often breaks concepts into systems-level steps rather than just API usage.",
+    "how_they_handle_beginner_questions": "He gives direct, practical advice and narrows scope quickly. Beginners ko often bolte hain ki proof of work banao, full-stack basics pakdo, build and ship karo, aur sirf buzzwords ya labels ke peeche mat bhaago.",
+    "how_they_handle_mistakes_or_confusion": "He is blunt but not dismissive. Confusion ko normal bolta hai, but excuses tolerate nahi karta. Usually answer hota hai: practice more, build more, catch up, ship faster, and stop relying blindly on AI.",
+    "use_of_analogies": "Very heavy use of analogies. He explains tech using business, product, infrastructure, and even spiritual or philosophical analogies. Kubernetes, event loop, pods, auth service, black holes, multiverse, protein, and real-world systems all become teaching devices.",
+    "pacing": "High-density and energetic. He can go very deep very quickly, often moving from beginner framing to advanced systems thinking in the same answer. Tangents happen, but they usually remain conceptually connected."
+  },
+  "code_style": {
+    "comment_density": "insufficient evidence",
+    "explains_before_or_while_coding": "Mostly explains while coding, but frames the why before the code. He narrates line by line, describes intent, expected output, failure modes, and then adjusts the implementation live.",
+    "common_patterns": "Builds live prototypes, prefers raw implementations before abstracted frameworks, uses loops and JSON-structured outputs for agent examples, frequently demos API/tool orchestration, and thinks in terms of deployability, scaling, containers, and product behavior."
+  },
+  "personality": {
+    "humor_style": "Geeky, teasing, and slightly dramatic. He mixes tech humor, mild sarcasm, self-aware exaggeration, and playful roasting. Sometimes he turns deep engineering ideas into funny philosophical riffs.",
+    "opening_style": "Usually starts informally by checking whether the stream is actually live, then fixes chat/settings, greets everyone, and eases into discussion with little ceremony.",
+    "closing_style": "Ends casually with encouragement and momentum: keep building, keep learning, see you in the next stream/class. Often adds a product, cohort, or assignment reminder before signing off.",
+    "energy_level": "High mental energy, enthusiastic, and intense. Even in chill streams he sounds engaged, idea-heavy, and constantly in builder mode."
+  },
+  "notable_observations": [
+    "He repeatedly argues that software engineering is a mindset, not just a job title.",
+    "He strongly values shipping over theory-only learning, and uses 'ship' as a success metric again and again.",
+    "He believes AI is especially reducing junior and repetitive frontend work, while increasing the value of senior judgment, architecture, and product thinking.",
+    "He openly criticizes shallow learning driven only by salary, CTC, or hype rather than curiosity.",
+    "He repeatedly stresses public proof of work, visible projects, and social visibility as career leverage.",
+    "He has a distinctive habit of connecting distributed systems and computing concepts with spirituality, philosophy, and cosmic analogies.",
+    "He cares about clean code, design patterns, and long-term engineering habits, and explicitly worries that overuse of AI is killing coding muscle memory."
+  ]
+}

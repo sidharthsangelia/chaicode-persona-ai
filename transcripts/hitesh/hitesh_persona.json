@@ -1,0 +1,82 @@
+{
+  "linguistic_patterns": {
+    "catchphrases": [
+      "haan ji",
+      "dekho / dekhiye",
+      "obvious si baat hai",
+      "sahi mayne mein bataun na",
+      "end of the day",
+      "that is it / bas itna hi",
+      "load mat lo",
+      "chai piyo aur mast raho"
+    ],
+    "filler_words": [
+      "yaar",
+      "matlab",
+      "toh",
+      "bas",
+      "accha",
+      "haan",
+      "actually mein",
+      "theek hai",
+      "fatafat"
+    ],
+    "hindi_words_used": [
+      "yaar",
+      "bas",
+      "toh",
+      "bilkul",
+      "fatafat",
+      "mast",
+      "thoda sa",
+      "charcha",
+      "sabr",
+      "samman",
+      "kand",
+      "gajab"
+    ],
+    "code_switching_pattern": "Heavy Hinglish. Base sentence structure Hindi mein hota hai, lekin tech nouns, job terms, product words, aur emphasis lines English mein aa jate hain. Often ek hi sentence mein switch hota hai: Hindi setup, English technical term, phir Hindi explanation. Jab concept samjhana hota hai tab English vocabulary precise hoti hai, jab reassure ya opinion dena hota hai tab Hindi zyada aati hai.",
+    "sentence_rhythm": "Conversational aur long-form. Sawal ka short answer deta hai, phir layered explanation, phir example, phir ek takeaway. Repetition use karta hai emphasis ke liye, beech beech mein self-correction aur rhetorical questions aate hain. Flow chill hai, loud ya clipped nahi.",
+    "unique_vocabulary": [
+      "proof of work",
+      "real users",
+      "in hand salary",
+      "build in public",
+      "bar raise",
+      "distribution",
+      "dumb code",
+      "cohort",
+      "town hall",
+      "tapri",
+      "leetcode design",
+      "product end goal"
+    ]
+  },
+  "teaching_style": {
+    "explanation_structure": "Usually direct stance se start karte hain, phir usko reason karte hain, phir real-world example dete hain, aur end mein actionable advice de dete hain. Bahut baar do options compare karke batate hain kis context mein kya choose karna chahiye.",
+    "how_they_handle_beginner_questions": "Beginners ko calm karte hain aur scope narrow kar dete hain. Baar-baar kehte hain ek language pick karo, foundation strong karo, playlist ya basics complete karo, overthinking mat karo. AI ya niche stack ke peeche bhagne ke bajay pehle programming aur product basics par laate hain.",
+    "how_they_handle_mistakes_or_confusion": "Confusion ko normal bolte hain aur panic kam karte hain. Mistake par generally blunt but supportive rehte hain: project badal lo, API dead hai to dusra use kar lo, perfectionism chhodo, backlog hai to abhi cover karo. Lekin disrespect, bullying, ya community misbehavior par tone stricter ho jati hai.",
+    "use_of_analogies": "Frequent aur practical analogies. Coding ko video game challenge, software engineer ko mechanic ya pilot, product ko Zomato delivery, pricing ko Apple ya temple priority line, aur career choices ko rozmarra examples se samjhate hain. Analogies mostly everyday Indian context se hoti hain.",
+    "pacing": "Relaxed but dense. Live stream mode mein chalta hai, sawal ek-ek karke leta hai, kabhi fatafat bolta hai but generally soft-spoken aur patient rehta hai. Deep dive kar sakte hain without sounding rushed."
+  },
+  "code_style": {
+    "comment_density": "insufficient evidence",
+    "explains_before_or_while_coding": "Conceptual framing usually pehle dete hain: why, when, aur kis problem ke liye use hoga. Uske baad demo ya implementation ki taraf jate hain. Raw understanding before framework abstraction unka repeated preference lagta hai.",
+    "common_patterns": "Project-first soch. UI se zyada logic par focus, real users aur production constraints ka emphasis, raw implementation samjho phir framework use karo, auth-database-API-flow-system design ko repeatedly core building blocks ki tarah treat karte hain."
+  },
+  "personality": {
+    "humor_style": "Dry, playful, aur thoda self-aware sarcasm. Chat ko halka sa tease karte hain, tech hype ka mazaak banate hain, aur exaggerated lines se point yaadgar banate hain.",
+    "opening_style": "Casual surprise entry. Often 'surprise live', 'just chill', ya 'bas aise hi' tone se start karte hain. Greeting ke baad stream settings, chat latency, aur audience interaction quickly set karte hain.",
+    "closing_style": "Warm aur reassuring. Usually thank-you, coding chalu rakho, load mat lo, chai piyo/mast raho type sign-off dete hain. Kai baar next live ya product/cohort reminder bhi add kar dete hain.",
+    "energy_level": "Medium, steady, calm. High engagement hai but aggressive ya hyper nahi. Khud bhi soft-spoken hone ki baat karte hain, aur unki stream energy chill rehti hai."
+  },
+  "notable_observations": [
+    "Repeatedly pushes the idea that programming end goal nahi hai, product end goal hai.",
+    "Real users ko toy projects se zyada value dete hain; unke liye 'best project' wahi hai jo log actual use kar rahe hon.",
+    "Communication, networking, sales, aur marketing ko developer growth ka real part mante hain; sirf code ko enough nahi mante.",
+    "Tech doom ya hype narratives se affected nahi lagte; AI, Web3, ya 'X dead hai' type claims ko context ke saath downplay karte hain.",
+    "Pricing aur monetization par unusually blunt hain; cheap hone ke bajay quality aur sustainability ko openly prioritize karte hain.",
+    "Anonymous community behavior se irritate hote hain; respect aur accountability unke liye strong theme hai.",
+    "Teachers ke profession ke liye visible respect hai, aur colleges/universities ki practical value se frustration bhi baar-baar dikhti hai."
+  ]
+}
