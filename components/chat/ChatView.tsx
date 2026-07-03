@@ -31,7 +31,7 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
     id: chatId ?? pendingChatId,
     messages: initialMessages,
     onFinish: () => {
-      if (isSignedIn && !chatId) router.replace(`/c/${pendingChatId}`);
+      if (isSignedIn && !chatId) router.replace(`/chat/${pendingChatId}`);
     },
   });
 

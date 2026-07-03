@@ -21,6 +21,7 @@ import {
 import type { UIMessage } from "ai";
 import type { PersonaMeta } from "@/lib/personas";
 import { ChatEmptyState } from "./ChatEmptyState";
+import { Streamdown } from "streamdown";
 
 interface ChatMessagesProps {
   messages: UIMessage[];
@@ -82,9 +83,10 @@ export function ChatMessages({
                         variant={isUser ? "tinted" : "muted"}
                         className="max-w-[85%] rounded-2xl shadow-sm"
                       >
-                        <BubbleContent className="whitespace-pre-wrap break-words text-[15px] leading-7">
-                          {text}
-                        </BubbleContent>
+                   <BubbleContent className="text-[15px] leading-7">
+  {isUser ? <span className="whitespace-pre-wrap break-words">{text}</span> : <Streamdown>{text}</Streamdown>}
+</BubbleContent>
+
                       </Bubble>
                     </MessageContent>
                   </Message>
