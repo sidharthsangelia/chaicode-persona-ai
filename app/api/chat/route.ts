@@ -2,6 +2,7 @@
 import { openai } from "@ai-sdk/openai";
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { hiteshPersona } from "@/lib/ai/personas/hitesh";
+import { piyushPersona } from "@/lib/ai/personas/piyush";
 
  
 export async function POST(req: Request) {
