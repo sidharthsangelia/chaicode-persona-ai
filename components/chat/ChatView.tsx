@@ -1,25 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
+import { useUser } from "@clerk/nextjs";
 import { getPersonaMeta, DEFAULT_PERSONA_ID } from "@/lib/personas";
+import { GUEST_MESSAGE_LIMIT } from "@/lib/chat/guestLimit";
 import { ChatHeader } from "./ChatHeader";
 import { ChatMessages } from "./ChatMessages";
 import { ChatComposer } from "./ChatComposer";
+import { GuestLimitBanner } from "./GuestLimitBanner";
+import type { UIMessage } from "ai";
 
-export function ChatView() {
-  const [personaId, setPersonaId] = useState(DEFAULT_PERSONA_ID);
+interface ChatViewProps {
+  chatId?: string;
+  initialMessages?: UIMessage[];
+  initialPersonaId?: string;
+}
+
+export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatViewProps) {
+  const router = useRouter();
+  const { isSignedIn } = useUser();
+
+  const [personaId, setPersonaId] = useState(initialPersonaId ?? DEFAULT_PERSONA_ID);
   const persona = getPersonaMeta(personaId);
 
-  const { messages, sendMessage, status, setMessages } = useChat();
+  const [pendingChatId] = useState(() => chatId ?? crypto.randomUUID());
+
+  const { messages, sendMessage, status, setMessages } = useChat({
+    id: chatId ?? pendingChatId,
+    messages: initialMessages,
+    onFinish: () => {
+      if (isSignedIn && !chatId) router.replace(`/c/${pendingChatId}`);
+    },
+  });
+
   const isStreaming = status === "streaming" || status === "submitted";
   const isThinking = isStreaming && (messages.length === 0 || messages.at(-1)?.role === "user");
 
+  const userMessageCount = useMemo(() => messages.filter((m) => m.role === "user").length, [messages]);
+  const guestLimitReached = !isSignedIn && userMessageCount >= GUEST_MESSAGE_LIMIT;
+
   function handleSend(text: string) {
-    sendMessage({ text }, { body: { personaId } });
+    if (guestLimitReached) return;
+    sendMessage({ text }, { body: { personaId, chatId: chatId ?? pendingChatId } });
   }
 
   function handlePersonaChange(nextId: string) {
+    if (chatId) {
+      router.push("/"); // existing chats keep their persona; switching starts fresh
+      return;
+    }
     setPersonaId(nextId);
     setMessages([]);
   }
@@ -30,20 +61,15 @@ export function ChatView() {
         persona={persona}
         personaId={personaId}
         onPersonaChange={handlePersonaChange}
-        disabled={isStreaming}
+        disabled={isStreaming || Boolean(chatId)}
       />
-      <ChatMessages
-        messages={messages}
-        persona={persona}
-        isThinking={isThinking}
-        onSuggestionClick={handleSend}
-      />
+      <ChatMessages messages={messages} persona={persona} isThinking={isThinking} onSuggestionClick={handleSend} />
       <div className="border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <ChatComposer
-          onSend={handleSend}
-          isStreaming={isStreaming}
-          placeholder={`Message ${persona.shortName}...`}
-        />
+        {guestLimitReached ? (
+          <GuestLimitBanner />
+        ) : (
+          <ChatComposer onSend={handleSend} isStreaming={isStreaming} placeholder={`Message ${persona.shortName}...`} />
+        )}
       </div>
     </div>
   );
