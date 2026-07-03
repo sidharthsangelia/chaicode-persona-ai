@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Marker, MarkerContent } from "@/components/ui/marker";
 import { Spinner } from "@/components/ui/spinner";
@@ -70,6 +70,7 @@ export function ChatMessages({
                     {!isUser && (
                       <MessageAvatar>
                         <Avatar className="h-8 w-8 shrink-0">
+                            <AvatarImage src={persona.avatar} />
                           <AvatarFallback className="text-xs font-semibold">
                             {persona.initials}
                           </AvatarFallback>
@@ -96,6 +97,7 @@ export function ChatMessages({
                 <Message align="start" className="gap-3">
                   <MessageAvatar>
                     <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage src={persona.avatar} />
                       <AvatarFallback className="text-xs font-semibold">
                         {persona.initials}
                       </AvatarFallback>

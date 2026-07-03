@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { PersonaMeta } from "@/lib/personas";
 
@@ -25,6 +25,7 @@ export function ChatEmptyState({
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
       <Avatar className="h-14 w-14">
+        <AvatarImage src={persona.avatar} />
         <AvatarFallback className="text-base font-semibold">{persona.initials}</AvatarFallback>
       </Avatar>
       <div>

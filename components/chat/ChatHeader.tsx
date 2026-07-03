@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import type { PersonaMeta } from "@/lib/personas";
 import { PersonaSwitcher } from "./PersonaSwitcher";
@@ -15,7 +15,8 @@ export function ChatHeader({ persona, personaId, onPersonaChange, disabled }: Ch
     <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="flex min-w-0 items-center gap-3">
         <SidebarTrigger className="-ml-1" />
-        <Avatar className="h-9 w-9 shrink-0">
+        <Avatar className="h-9 w-9 shrink-0" >
+            <AvatarImage src={persona.avatar} />
           <AvatarFallback className="text-xs font-semibold">{persona.initials}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 leading-tight">

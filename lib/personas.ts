@@ -5,6 +5,7 @@ export interface PersonaMeta {
   shortName: string;
   initials: string;
   tagline: string;
+  avatar: string;
 }
 
 export const PERSONAS: Record<string, PersonaMeta> = {
@@ -14,6 +15,7 @@ export const PERSONAS: Record<string, PersonaMeta> = {
     shortName: "Hitesh",
     initials: "HC",
     tagline: "Chai aur Code",
+    avatar: "/hitesh.jpg",
   },
   piyush: {
     id: "piyush",
@@ -21,6 +23,7 @@ export const PERSONAS: Record<string, PersonaMeta> = {
     shortName: "Piyush",
     initials: "PG",
     tagline: "piyushgarg.dev",
+    avatar: "/piyush.jpg",
   },
 };
 
