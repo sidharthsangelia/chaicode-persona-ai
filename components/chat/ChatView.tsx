@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { useUser } from "@clerk/nextjs";
 import { getPersonaMeta, DEFAULT_PERSONA_ID } from "@/lib/personas";
@@ -10,7 +11,6 @@ import { ChatMessages } from "./ChatMessages";
 import { ChatComposer } from "./ChatComposer";
 import { GuestLimitBanner } from "./GuestLimitBanner";
 import type { UIMessage } from "ai";
-import { useRouter } from "next/navigation";
 
 interface ChatViewProps {
   chatId?: string;
@@ -26,6 +26,10 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
   const persona = getPersonaMeta(personaId);
 
   const [pendingChatId] = useState(() => chatId ?? crypto.randomUUID());
+  // Tracks whether THIS chat has already been written to the DB, even though
+  // `chatId` (the prop) stays undefined for the lifetime of this component —
+  // we never actually navigate to /chat/[id], we only swap the URL bar.
+  const [hasStartedChat, setHasStartedChat] = useState(Boolean(chatId));
 
   const { messages, sendMessage, status, setMessages } = useChat({
     id: chatId ?? pendingChatId,
@@ -33,6 +37,8 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
     onFinish: () => {
       if (isLoaded && isSignedIn && !chatId) {
         window.history.replaceState(null, "", `/chat/${pendingChatId}`);
+        setHasStartedChat(true);
+        router.refresh(); // re-renders AppSidebar (Server Component) with the new chat row
       }
     },
   });
@@ -49,8 +55,11 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
   }
 
   function handlePersonaChange(nextId: string) {
-    if (chatId) {
-      router.push("/");
+    if (chatId || hasStartedChat) {
+      // This "chat" is already saved under pendingChatId — reusing it for a
+      // different persona would corrupt ensureChat's persona/title. Force a
+      // real reload so a fresh pendingChatId gets generated.
+      window.location.assign("/");
       return;
     }
     setPersonaId(nextId);
@@ -63,7 +72,7 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
         persona={persona}
         personaId={personaId}
         onPersonaChange={handlePersonaChange}
-        disabled={isStreaming || Boolean(chatId)}
+        disabled={isStreaming || chatId !== undefined || hasStartedChat}
       />
       <ChatMessages messages={messages} persona={persona} isThinking={isThinking} onSuggestionClick={handleSend} />
       <div className="border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">

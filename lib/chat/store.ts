@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { UIMessage } from "ai";
 
@@ -7,22 +7,11 @@ export async function ensureUser(userId: string) {
 }
 
 export async function ensureChat({
-  chatId,
-  userId,
-  personaId,
-  firstUserText,
-}: {
-  chatId: string;
-  userId: string;
-  personaId: string;
-  firstUserText: string;
-}) {
+  chatId, userId, personaId, firstUserText,
+}: { chatId: string; userId: string; personaId: string; firstUserText: string }) {
   const existing = await prisma.chat.findUnique({ where: { id: chatId } });
   if (existing) return existing;
-
-  return prisma.chat.create({
-    data: { id: chatId, userId, personaId, title: firstUserText.slice(0, 60) },
-  });
+  return prisma.chat.create({ data: { id: chatId, userId, personaId, title: firstUserText.slice(0, 60) } });
 }
 
 export async function saveTurn({ chatId, messages }: { chatId: string; messages: UIMessage[] }) {
@@ -39,7 +28,6 @@ export async function getChat(chatId: string, userId: string) {
     include: { messages: { orderBy: { createdAt: "asc" } } },
   });
   if (!chat) return null;
-
   return {
     id: chat.id,
     personaId: chat.personaId,

@@ -1,0 +1,150 @@
+"use client";
+
+import { useState, useRef, useTransition } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { MoreHorizontal, Pencil, Trash2, Check, X } from "lucide-react";
+import { toast } from "sonner";
+import { SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { deleteChatAction, renameChatAction } from "@/actions/chatActions";
+ 
+
+export function ChatListItem({ chat }: { chat: { id: string; title: string | null } }) {
+  const router = useRouter();
+  const params = useParams<{ id?: string }>();
+  const isActive = params?.id === chat.id;
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [title, setTitle] = useState(chat.title ?? "Untitled chat");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  function commitRename() {
+    const trimmed = title.trim();
+    setIsEditing(false);
+
+    if (!trimmed || trimmed === chat.title) {
+      setTitle(chat.title ?? "Untitled chat");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await renameChatAction(chat.id, trimmed);
+      if (result?.error) {
+        toast.error(result.error);
+        setTitle(chat.title ?? "Untitled chat");
+      } else {
+        toast.success("Chat renamed");
+      }
+    });
+  }
+
+  function confirmDelete() {
+    setShowDeleteDialog(false);
+    startTransition(async () => {
+      const result = await deleteChatAction(chat.id);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Chat deleted");
+      if (isActive) router.push("/chat");
+    });
+  }
+
+  if (isEditing) {
+    return (
+      <SidebarMenuItem>
+        <div className="flex items-center gap-1 px-1">
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") {
+                setTitle(chat.title ?? "Untitled chat");
+                setIsEditing(false);
+              }
+            }}
+            autoFocus
+            onFocus={(e) => e.target.select()}
+            className="h-7 text-sm"
+          />
+          <button onClick={commitRename} className="shrink-0 rounded p-1 hover:bg-sidebar-accent" aria-label="Save">
+            <Check className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => { setTitle(chat.title ?? "Untitled chat"); setIsEditing(false); }}
+            className="shrink-0 rounded p-1 hover:bg-sidebar-accent"
+            aria-label="Cancel"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </SidebarMenuItem>
+    );
+  }
+
+  return (
+    <>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive} disabled={isPending}>
+          <Link href={`/chat/${chat.id}`}>
+            <span className="truncate">{title}</span>
+          </Link>
+        </SidebarMenuButton>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuAction showOnHover>
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Chat options</span>
+            </SidebarMenuAction>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start">
+            <DropdownMenuItem onSelect={() => setIsEditing(true)}>
+              <Pencil className="h-4 w-4" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => setShowDeleteDialog(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &ldquo;{title}&rdquo; and all its messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

@@ -4,10 +4,12 @@ import { auth } from "@clerk/nextjs/server";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
-  SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarGroupLabel, SidebarHeader, SidebarMenu,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { listChats } from "@/lib/chat/store";
+import { ChatListItem } from "./chat/ChatListItem";
+ 
 
 export async function AppSidebar() {
   const { userId } = await auth();
@@ -40,13 +42,7 @@ export async function AppSidebar() {
             {userId ? (
               <SidebarMenu>
                 {chats.map((chat) => (
-                  <SidebarMenuItem key={chat.id}>
-                    <SidebarMenuButton asChild>
-                      <Link href={`/chat/${chat.id}`}>
-                        <span className="truncate">{chat.title ?? "Untitled chat"}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <ChatListItem key={chat.id} chat={chat} />
                 ))}
                 {chats.length === 0 && (
                   <p className="px-2 py-1.5 text-xs text-muted-foreground">No saved chats yet.</p>
