@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { MoreHorizontal, Pencil, Trash2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -41,9 +41,15 @@ export function ChatListItem({
   chat: { id: string; title: string | null; personaId: string };
 }) {
   const router = useRouter();
-  const { activeChatId } = useActiveChat();
-  const isActive = activeChatId === chat.id;
+const pathname = usePathname();
+const { activeChatId } = useActiveChat();
+
+const isActive =
+  pathname === `/chat/${chat.id}` ||
+  (activeChatId !== null && activeChatId === chat.id);
   const persona = getPersonaMeta(chat.personaId);
+
+  console.log("row:", chat.id, "isActive:", isActive, "pathname:", pathname, "activeChatId:", activeChatId);
 
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(chat.title ?? "Untitled chat");
@@ -128,53 +134,23 @@ export function ChatListItem({
 
   return (
     <>
-      <SidebarMenuItem
-        className={cn(
-          "group/item relative ",
-          isPending && "pointer-events-none opacity-60",
-        )}
-      >
-        <SidebarMenuButton
-          asChild
-          isActive={isActive}
-          disabled={isPending}
-          className="
-  h-10
-  gap-2
-  rounded-xl
-  px-2.5
-  transition-all
-  duration-150
-  data-[active=true]:font-medium
- 
-"
-        >
-          <Link
-            href={`/chat/${chat.id}`}
-            onClick={() => setOpenMobile(false)}
-            className="pr-7 "
-          >
-            <Avatar className="h-4 w-4 shrink-0">
-              <AvatarFallback className="text-[8px]">
-                {persona.initials}
-              </AvatarFallback>
-            </Avatar>
-            <span className="truncate text-sm" title={title}>
-              {title}
-            </span>
-          </Link>
-        </SidebarMenuButton>
+     <SidebarMenuItem className={cn("group/item relative", isPending && "pointer-events-none opacity-60")}>
+  <SidebarMenuButton asChild isActive={isActive} disabled={isPending} tooltip={title}>
+    <Link href={`/chat/${chat.id}`} onClick={() => setOpenMobile(false)} className="pr-7">
+      <Avatar className="h-4 w-4 shrink-0">
+        <AvatarFallback className="text-[8px]">{persona.initials}</AvatarFallback>
+      </Avatar>
+      <span className="truncate">{title}</span>
+    </Link>
+  </SidebarMenuButton>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuAction
-              showOnHover
-              className="opacity-0 transition-opacity group-hover/item:opacity-100 data-[state=open]:opacity-100"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-              <span className="sr-only">Conversation options</span>
-            </SidebarMenuAction>
-          </DropdownMenuTrigger>
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <SidebarMenuAction showOnHover className="peer-data-[active=true]/menu-button:opacity-100">
+        <MoreHorizontal className="h-4 w-4" />
+        <span className="sr-only">Conversation options</span>
+      </SidebarMenuAction>
+    </DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="start" className="w-44">
             <DropdownMenuItem
               onSelect={() => setIsEditing(true)}

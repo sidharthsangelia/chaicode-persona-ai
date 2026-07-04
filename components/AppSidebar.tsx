@@ -10,13 +10,15 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { listChats } from "@/lib/chat/store";
 import { ChatListItem } from "@/components/chat/ChatListItem";
 import { groupChatsByDate } from "@/lib/chat/groupByDate";
-import { NewChatButton } from "./chat/NewChatButton";
+import { NewChatButton } from "@/components/chat/NewChatButton";
+import { SidebarUserButton } from "./SidebarUserButton";
 
 export async function AppSidebar() {
   const { userId } = await auth();
@@ -24,46 +26,50 @@ export async function AppSidebar() {
   const groups = groupChatsByDate(chats);
 
   return (
-    <Sidebar collapsible="icon" className="border-r">
-      <SidebarHeader className="gap-2 p-2">
-        <Link
-          href="/chat"
-          className="flex items-center gap-2 px-1.5 py-1 group-data-[collapsible=icon]:justify-center"
-        >
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-foreground text-xs font-semibold text-background">
-            AI
-          </div>
-          <span className="text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-            Persona AI
-          </span>
-        </Link>
-
-        {userId ? (
-          <NewChatButton />
-        ) : (
-          <SignInButton mode="modal">
-            <Button
-              variant="outline"
-              className="h-9 w-full justify-start gap-2 rounded-lg px-2.5 text-sm font-normal group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <Link
+              href="/chat"
+              className="flex h-9 items-center gap-2 rounded-md px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
             >
-              <span className="group-data-[collapsible=icon]:hidden">
-                New chat
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-[11px] font-semibold text-sidebar-primary-foreground">
+                A
+              </div>
+              <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
+                AfterClass
               </span>
-            </Button>
-          </SignInButton>
-        )}
+            </Link>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
+        <SidebarMenu>
+          <SidebarMenuItem>
+            {userId ? (
+              <NewChatButton />
+            ) : (
+              <SignInButton mode="modal">
+                <Button
+                  variant="outline"
+                  className="h-8 w-full justify-start gap-2 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+                >
+                  <span className="group-data-[collapsible=icon]:hidden">New chat</span>
+                </Button>
+              </SignInButton>
+            )}
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="gap-0">
+      <SidebarContent>
         {userId ? (
           groups.length > 0 ? (
             groups.map((group) => (
-              <SidebarGroup key={group.label} className="py-1">
-                <SidebarGroupLabel className="px-3 text-[11px] font-medium text-muted-foreground/70 group-data-[collapsible=icon]:hidden">
-                  {group.label}
-                </SidebarGroupLabel>
+              <SidebarGroup key={group.label}>
+                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
                 <SidebarGroupContent>
-                  <SidebarMenu className="gap-0.5 px-1.5 bg-amber-100">
+                  <SidebarMenu>
                     {group.chats.map((chat) => (
                       <ChatListItem key={chat.id} chat={chat} />
                     ))}
@@ -72,69 +78,31 @@ export async function AppSidebar() {
               </SidebarGroup>
             ))
           ) : (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
+            <div className="px-4 py-8 text-center text-sm text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
               No conversations yet.
-            </p>
+            </div>
           )
         ) : (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
+          <div className="px-4 py-8 text-center text-sm text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
             Sign in to save conversations and access them from any device.
-          </p>
+          </div>
         )}
       </SidebarContent>
-      <SidebarFooter className="border-t p-2">
-        {userId ? (
-          <div
-            className="
-        flex
-        items-center
-        rounded-xl
-        px-2
-        py-2
-        transition-colors
-        hover:bg-sidebar-accent
-        group-data-[collapsible=icon]:justify-center
-      "
-          >
-            <UserButton
-              appearance={{
-                elements: {
-                  rootBox: "w-full",
-                  userButtonBox:
-                    "w-full flex-row-reverse justify-end group-data-[collapsible=icon]:justify-center",
-                  userButtonTrigger:
-                    "w-full rounded-lg p-0 hover:bg-transparent",
-                  userButtonOuterIdentifier:
-                    "text-sm font-medium text-foreground",
-                  userButtonPopoverCard: "rounded-xl",
-                },
-              }}
-              showName
-            />
-          </div>
-        ) : (
-          <SignInButton mode="modal">
-            <Button
-              className="
-          h-10
-          w-full
-          rounded-xl
-          text-sm
-          font-medium
-          group-data-[collapsible=icon]:aspect-square
-          group-data-[collapsible=icon]:w-10
-        "
-            >
-              <span className="group-data-[collapsible=icon]:hidden">
-                Sign in
-              </span>
 
-              <span className="hidden group-data-[collapsible=icon]:inline">
-                →
-              </span>
-            </Button>
-          </SignInButton>
-        )}
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            {userId ? (
+       <SidebarUserButton />
+            ) : (
+              <SignInButton mode="modal">
+                <Button className="h-8 w-full group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:p-0">
+                  <span className="group-data-[collapsible=icon]:hidden">Sign in</span>
+                </Button>
+              </SignInButton>
+            )}
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
 
       <SidebarRail />

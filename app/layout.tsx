@@ -46,12 +46,14 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <body className="min-h-full flex flex-col">
+          <TooltipProvider>
           <ActiveChatProvider>
             <SidebarProvider>
               <AppSidebar />
-              <TooltipProvider>{children}</TooltipProvider>
+              {children}
             </SidebarProvider>
           </ActiveChatProvider>
+          </TooltipProvider>
           <Toaster />
         </body>
       </html>
