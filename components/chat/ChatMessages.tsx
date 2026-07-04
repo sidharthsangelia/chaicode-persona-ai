@@ -16,6 +16,9 @@ import type { PersonaMeta } from "@/lib/personas";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { Streamdown } from "streamdown";
 import { cn } from "@/lib/utils";
+import { YouTubeResultsSkeleton } from "./YoutubeResultsSkeleton";
+import { YouTubeResult } from "@/lib/ai/tools/youtube";
+import { YouTubeResults } from "./YoutubeResults";
 
 interface ChatMessagesProps {
   messages: UIMessage[];
@@ -32,10 +35,7 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   if (messages.length === 0) {
     return (
-      <ChatEmptyState
-        persona={persona}
-        onSuggestionClick={onSuggestionClick}
-      />
+      <ChatEmptyState persona={persona} onSuggestionClick={onSuggestionClick} />
     );
   }
 
@@ -78,10 +78,7 @@ export function ChatMessages({
               }
 
               return (
-                <MessageScrollerItem
-                  key={message.id}
-                  messageId={message.id}
-                >
+                <MessageScrollerItem key={message.id} messageId={message.id}>
                   <div className="flex gap-4 py-8">
                     <Avatar className="mt-1 h-8 w-8 shrink-0">
                       <AvatarImage src={persona.avatar} />
@@ -94,11 +91,37 @@ export function ChatMessages({
                       className={cn(
                         "min-w-0 flex-1",
                         "prose prose-neutral dark:prose-invert",
-                        "max-w-none"
+                        "max-w-none",
                       )}
                     >
                       <div className="text-[15px] leading-8">
                         <Streamdown>{text}</Streamdown>
+                        {message.parts.map((part, i) => {
+                          if (part.type !== "tool-searchYouTube") return null;
+
+                          if (
+                            part.state === "input-streaming" ||
+                            part.state === "input-available"
+                          ) {
+                            return <YouTubeResultsSkeleton key={i} />;
+                          }
+
+                          if (part.state === "output-available") {
+                            const output = part.output as {
+                              results?: YouTubeResult[];
+                              error?: string;
+                            };
+                            if (output.error) return null;
+                            return (
+                              <YouTubeResults
+                                key={i}
+                                results={output.results ?? []}
+                              />
+                            );
+                          }
+
+                          return null;
+                        })}
                       </div>
                     </div>
                   </div>

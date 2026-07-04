@@ -9,23 +9,38 @@ import {
   createUIMessageStreamResponse,
   toUIMessageStream,
   type UIMessage,
+  stepCountIs,
 } from "ai";
 import { countUserMessages, GUEST_MESSAGE_LIMIT } from "@/lib/chat/guestLimit";
+import { createYoutubeSearchTool } from "@/lib/ai/tools/youtube";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
-  const { messages, personaId, chatId }: { messages: UIMessage[]; personaId?: string; chatId?: string } =
+  const {
+    messages,
+    personaId,
+    chatId,
+  }: { messages: UIMessage[]; personaId?: string; chatId?: string } =
     await req.json();
 
   if (!userId) {
     if (countUserMessages(messages) > GUEST_MESSAGE_LIMIT) {
-      return new Response("Guest limit reached. Sign in to keep chatting.", { status: 403 });
+      return new Response("Guest limit reached. Sign in to keep chatting.", {
+        status: 403,
+      });
     }
   } else if (chatId) {
     await ensureUser(userId);
     const firstUserText =
-      messages.find((m) => m.role === "user")?.parts.find((p) => p.type === "text")?.text ?? "New chat";
-    await ensureChat({ chatId, userId, personaId: personaId ?? "hitesh", firstUserText });
+      messages
+        .find((m) => m.role === "user")
+        ?.parts.find((p) => p.type === "text")?.text ?? "New chat";
+    await ensureChat({
+      chatId,
+      userId,
+      personaId: personaId ?? "hitesh",
+      firstUserText,
+    });
   }
 
   const stream = createUIMessageStream<UIMessage>({
@@ -37,6 +52,10 @@ export async function POST(req: Request) {
         model: openai("gpt-4o-mini"),
         system: getSystemPrompt(personaId),
         messages: modelMessages,
+        tools: {
+          searchYouTube: createYoutubeSearchTool(personaId ?? "hitesh"),
+        },
+        stopWhen: stepCountIs(2),
         temperature: 0.6,
         maxOutputTokens: 700,
         abortSignal: req.signal,

@@ -97,7 +97,7 @@ export function ChatListItem({ chat }: { chat: { id: string; title: string | nul
   return (
     <>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive} disabled={isPending}>
+        <SidebarMenuButton asChild isActive={isActive} disabled={isPending} className="my-1">
           <Link href={`/chat/${chat.id}`}>
             <span className="truncate">{title}</span>
           </Link>
