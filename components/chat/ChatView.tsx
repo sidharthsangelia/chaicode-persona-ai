@@ -104,7 +104,7 @@ export function ChatView({
         persona={persona}
         personaId={personaId}
         onPersonaChange={handlePersonaChange}
-        disabled={isStreaming || chatId !== undefined || hasStartedChat}
+        startsNewChatOnSwitch={messages.length > 0}
       />
       <ChatMessages
         messages={messages}

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import type { PersonaMeta } from "@/lib/personas";
+import { getGreeting } from "@/utils/greetings";
 
 const STARTERS: Record<string, string[]> = {
   hitesh: [
@@ -25,7 +26,7 @@ const STARTERS: Record<string, string[]> = {
     "How much DevOps should a full stack developer know?",
     "What skills make developers stand out today?",
     "How should I prepare for internships?",
-    "How do I become better at problem solving?"
+    "How do I become better at problem solving?",
   ],
 
   piyush: [
@@ -48,7 +49,7 @@ const STARTERS: Record<string, string[]> = {
     "How should I design microservices communication?",
     "What does observability look like in production?",
     "How should I handle distributed transactions?",
-    "How do I prepare for senior backend interviews?"
+    "How do I prepare for senior backend interviews?",
   ],
 };
 
@@ -67,13 +68,12 @@ export function ChatEmptyState({
     return shuffle(STARTERS[persona.id] ?? []).slice(0, 4);
   }, [persona.id]);
 
+  const greeting = useMemo(() => getGreeting(persona.id), [persona.id]);
   return (
     <div className="flex flex-1 items-center justify-center px-6">
       <div className="mx-auto w-full max-w-4xl">
         <div className="mb-12 text-center">
-          <h1 className="text-4xl font-semibold tracking-tight">
-            How can {persona.shortName} help you today?
-          </h1>
+          <h1 className="text-3xl font-semibold tracking-tight">{greeting}</h1>
 
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground">
             {persona.tagline}
