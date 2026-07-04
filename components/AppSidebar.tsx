@@ -19,6 +19,7 @@ import { ChatListItem } from "@/components/chat/ChatListItem";
 import { groupChatsByDate } from "@/lib/chat/groupByDate";
 import { NewChatButton } from "@/components/chat/NewChatButton";
 import { SidebarUserButton } from "./SidebarUserButton";
+import Image from "next/image";
 
 export async function AppSidebar() {
   const { userId } = await auth();
@@ -34,11 +35,12 @@ export async function AppSidebar() {
               href="/chat"
               className="flex h-9 items-center gap-2 rounded-md px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
             >
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-[11px] font-semibold text-sidebar-primary-foreground">
+              {/* <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-[11px] font-semibold text-sidebar-primary-foreground">
                 A
-              </div>
+              </div> */}
+              <Image src="/logo1.png" alt="Logo" width={24} height={24} className="rounded-full" />
               <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
-                AfterClass
+                After Class
               </span>
             </Link>
           </SidebarMenuItem>
