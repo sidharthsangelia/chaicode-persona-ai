@@ -23,7 +23,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "After Class",
-  description: "After Class is an AI-powered chat application that allows users to have conversations with different personas. Users can create, rename, and delete chats, as well as switch between different personas for a more personalized experience.",
+  description:
+    "After Class is an AI-powered chat application that allows users to have conversations with different personas. Users can create, rename, and delete chats, as well as switch between different personas for a more personalized experience.",
 };
 
 export default function RootLayout({
@@ -47,12 +48,12 @@ export default function RootLayout({
       >
         <body className="min-h-full flex flex-col">
           <TooltipProvider>
-          <ActiveChatProvider>
-            <SidebarProvider>
-              <AppSidebar />
-              {children}
-            </SidebarProvider>
-          </ActiveChatProvider>
+            <ActiveChatProvider>
+              <SidebarProvider>
+                <AppSidebar />
+                {children}
+              </SidebarProvider>
+            </ActiveChatProvider>
           </TooltipProvider>
           <Toaster />
         </body>

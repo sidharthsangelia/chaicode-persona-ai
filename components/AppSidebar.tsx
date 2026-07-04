@@ -2,8 +2,17 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { SignInButton } from "@clerk/nextjs";
 import {
-  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
-  SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import { listChats } from "@/lib/chat/store";
 import { ChatListItem } from "@/components/chat/ChatListItem";
@@ -23,9 +32,20 @@ export async function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link href="/chat" className="flex h-9 items-center gap-2 rounded-md px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-              <Image src="/logo1.png" alt="Logo" width={24} height={24} className="rounded-full" />
-              <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">After Class</span>
+            <Link
+              href="/chat"
+              className="flex h-9 items-center gap-2 rounded-md px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            >
+              <Image
+                src="/logo1.png"
+                alt="Logo"
+                width={24}
+                height={24}
+                className="rounded-full"
+              />
+              <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
+                After Class
+              </span>
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -36,7 +56,10 @@ export async function AppSidebar() {
               <NewChatButton />
             ) : (
               <SignInButton mode="modal">
-                <SidebarMenuButton tooltip="Sign in" className="justify-start gap-2">
+                <SidebarMenuButton
+                  tooltip="Sign in"
+                  className="justify-start gap-2"
+                >
                   <LogIn />
                   <span>Sign in</span>
                 </SidebarMenuButton>
@@ -68,7 +91,8 @@ export async function AppSidebar() {
           )
         ) : (
           <div className="px-4 py-8 text-center text-sm text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
-            Your chat stays on this device. Sign in anytime to keep it and pick up from any device.
+            Your chat stays on this device. Sign in anytime to keep it and pick
+            up from any device.
           </div>
         )}
       </SidebarContent>
