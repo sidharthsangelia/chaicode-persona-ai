@@ -1,25 +1,17 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { SignInButton, UserButton } from "@clerk/nextjs";
+import { SignInButton } from "@clerk/nextjs";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarRail,
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
+  SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
 import { listChats } from "@/lib/chat/store";
 import { ChatListItem } from "@/components/chat/ChatListItem";
 import { groupChatsByDate } from "@/lib/chat/groupByDate";
 import { NewChatButton } from "@/components/chat/NewChatButton";
 import { SidebarUserButton } from "./SidebarUserButton";
 import Image from "next/image";
+import { LogIn } from "lucide-react";
 
 export async function AppSidebar() {
   const { userId } = await auth();
@@ -31,17 +23,9 @@ export async function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link
-              href="/chat"
-              className="flex h-9 items-center gap-2 rounded-md px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-            >
-              {/* <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-[11px] font-semibold text-sidebar-primary-foreground">
-                A
-              </div> */}
+            <Link href="/chat" className="flex h-9 items-center gap-2 rounded-md px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
               <Image src="/logo1.png" alt="Logo" width={24} height={24} className="rounded-full" />
-              <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
-                After Class
-              </span>
+              <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">After Class</span>
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -52,12 +36,10 @@ export async function AppSidebar() {
               <NewChatButton />
             ) : (
               <SignInButton mode="modal">
-                <Button
-                  variant="outline"
-                  className="h-8 w-full justify-start gap-2 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
-                >
-                  <span className="group-data-[collapsible=icon]:hidden">New chat</span>
-                </Button>
+                <SidebarMenuButton tooltip="Sign in" className="justify-start gap-2">
+                  <LogIn />
+                  <span>Sign in</span>
+                </SidebarMenuButton>
               </SignInButton>
             )}
           </SidebarMenuItem>
@@ -81,30 +63,24 @@ export async function AppSidebar() {
             ))
           ) : (
             <div className="px-4 py-8 text-center text-sm text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
-              No conversations yet.
+              Nothing here yet — start a conversation.
             </div>
           )
         ) : (
           <div className="px-4 py-8 text-center text-sm text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
-            Sign in to save conversations and access them from any device.
+            Your chat stays on this device. Sign in anytime to keep it and pick up from any device.
           </div>
         )}
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            {userId ? (
-       <SidebarUserButton />
-            ) : (
-              <SignInButton mode="modal">
-                <Button className="h-8 w-full group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:p-0">
-                  <span className="group-data-[collapsible=icon]:hidden">Sign in</span>
-                </Button>
-              </SignInButton>
-            )}
-          </SidebarMenuItem>
-        </SidebarMenu>
+        {userId && (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarUserButton />
+            </SidebarMenuItem>
+          </SidebarMenu>
+        )}
       </SidebarFooter>
 
       <SidebarRail />
