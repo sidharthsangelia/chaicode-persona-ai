@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { listChats } from "@/lib/chat/store";
+import { ChatRow, listChats } from "@/lib/chat/store";
 import { ChatListItem } from "@/components/chat/ChatListItem";
 import { groupChatsByDate } from "@/lib/chat/groupByDate";
 import { NewChatButton } from "@/components/chat/NewChatButton";
@@ -24,7 +24,7 @@ import { LogIn } from "lucide-react";
 
 export async function AppSidebar() {
   const { userId } = await auth();
- const chats: Awaited<ReturnType<typeof listChats>> = userId ? await listChats(userId) : [];
+const chats: ChatRow[] = userId ? await listChats(userId) : [];
   const groups = groupChatsByDate(chats);
 
   return (

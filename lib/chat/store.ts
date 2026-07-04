@@ -47,3 +47,5 @@ export async function listChats(userId: string) {
     take: 50,
   });
 }
+
+export type ChatRow = Awaited<ReturnType<typeof listChats>>[number];
