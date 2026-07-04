@@ -74,9 +74,6 @@ export function PersonaSwitcher({
                     </p>
                   </div>
 
-                  <p className="truncate text-xs text-muted-foreground">
-                    {activePersona.tagline}
-                  </p>
                 </div>
 
                 <ChevronsUpDownIcon
