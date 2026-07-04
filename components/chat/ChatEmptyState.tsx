@@ -74,13 +74,9 @@ export function ChatEmptyState({
       <div className="mx-auto w-full max-w-4xl">
         <div className="mb-12 text-center">
           <h1 className="text-3xl font-semibold tracking-tight">{greeting}</h1>
-
-          <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground">
-            {persona.tagline}
-          </p>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2">
           {suggestions.map((suggestion) => (
             <Button
               key={suggestion}
@@ -88,9 +84,9 @@ export function ChatEmptyState({
               onClick={() => onSuggestionClick(suggestion)}
               className="
                 h-auto
-                min-h-[96px]
+                min-h-[56px]
                 justify-start
-                rounded-2xl
+                rounded-3xl
                 px-5
                 py-5
                 text-left
@@ -101,6 +97,8 @@ export function ChatEmptyState({
                 transition-all
                 duration-200
                 hover:scale-[1.01]
+                hover:cursor-pointer
+         
               "
             >
               {suggestion}

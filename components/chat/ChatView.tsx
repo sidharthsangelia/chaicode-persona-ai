@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { useUser } from "@clerk/nextjs";
@@ -11,6 +11,7 @@ import { ChatMessages } from "./ChatMessages";
 import { ChatComposer } from "./ChatComposer";
 import { GuestLimitBanner } from "./GuestLimitBanner";
 import type { UIMessage } from "ai";
+import { useActiveChat } from "@/lib/chat/activeChatContext";
 
 interface ChatViewProps {
   chatId?: string;
@@ -57,6 +58,15 @@ export function ChatView({
     () => messages.filter((m) => m.role === "user").length,
     [messages],
   );
+
+
+  const { setActiveChatId } = useActiveChat();
+
+useEffect(() => {
+  setActiveChatId(chatId ?? pendingChatId);
+}, [chatId, pendingChatId, setActiveChatId]);
+
+
   const guestLimitReached =
     !isSignedIn && userMessageCount >= GUEST_MESSAGE_LIMIT;
 
