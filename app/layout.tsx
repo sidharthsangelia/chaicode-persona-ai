@@ -8,6 +8,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ActiveChatProvider } from "@/lib/chat/activeChatContext";
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -52,6 +53,7 @@ export default function RootLayout({
               <SidebarProvider>
                 <AppSidebar />
                 {children}
+                 <Analytics />
               </SidebarProvider>
             </ActiveChatProvider>
           </TooltipProvider>
