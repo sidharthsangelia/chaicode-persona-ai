@@ -116,7 +116,7 @@ export function ChatView({
         onEditMessage={handleEditMessage}
         onRegenerate={handleRegenerate}
       />
-      <div className="border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className=" bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         {guestLimitReached ? (
           <GuestLimitBanner />
         ) : (
