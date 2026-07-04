@@ -18,11 +18,17 @@ interface ChatViewProps {
   initialPersonaId?: string;
 }
 
-export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatViewProps) {
+export function ChatView({
+  chatId,
+  initialMessages,
+  initialPersonaId,
+}: ChatViewProps) {
   const router = useRouter();
   const { isLoaded, isSignedIn } = useUser();
 
-  const [personaId, setPersonaId] = useState(initialPersonaId ?? DEFAULT_PERSONA_ID);
+  const [personaId, setPersonaId] = useState(
+    initialPersonaId ?? DEFAULT_PERSONA_ID,
+  );
   const persona = getPersonaMeta(personaId);
 
   const [pendingChatId] = useState(() => chatId ?? crypto.randomUUID());
@@ -31,7 +37,7 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
   // we never actually navigate to /chat/[id], we only swap the URL bar.
   const [hasStartedChat, setHasStartedChat] = useState(Boolean(chatId));
 
-  const { messages, sendMessage, status, setMessages } = useChat({
+  const { messages, sendMessage, status, setMessages, regenerate } = useChat({
     id: chatId ?? pendingChatId,
     messages: initialMessages,
     onFinish: () => {
@@ -44,14 +50,22 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
-  const isThinking = isStreaming && (messages.length === 0 || messages.at(-1)?.role === "user");
+  const isThinking =
+    isStreaming && (messages.length === 0 || messages.at(-1)?.role === "user");
 
-  const userMessageCount = useMemo(() => messages.filter((m) => m.role === "user").length, [messages]);
-  const guestLimitReached = !isSignedIn && userMessageCount >= GUEST_MESSAGE_LIMIT;
+  const userMessageCount = useMemo(
+    () => messages.filter((m) => m.role === "user").length,
+    [messages],
+  );
+  const guestLimitReached =
+    !isSignedIn && userMessageCount >= GUEST_MESSAGE_LIMIT;
 
   function handleSend(text: string) {
     if (guestLimitReached) return;
-    sendMessage({ text }, { body: { personaId, chatId: chatId ?? pendingChatId } });
+    sendMessage(
+      { text },
+      { body: { personaId, chatId: chatId ?? pendingChatId } },
+    );
   }
 
   function handlePersonaChange(nextId: string) {
@@ -66,6 +80,24 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
     setMessages([]);
   }
 
+  async function handleRegenerate(messageId: string) {
+    if (chatId ?? pendingChatId) {
+      const { pruneMessagesFromAction } = await import("@/actions/chatActions");
+      await pruneMessagesFromAction(chatId ?? pendingChatId, messageId);
+    }
+    regenerate({ messageId });
+  }
+
+  function handleEditMessage(messageId: string, newText: string) {
+    const index = messages.findIndex((m) => m.id === messageId);
+    if (index === -1) return;
+
+    setMessages([
+      ...messages.slice(0, index),
+      { ...messages[index], parts: [{ type: "text", text: newText }] },
+    ]);
+    regenerate();
+  }
   return (
     <div className="flex h-dvh flex-1 flex-col bg-background">
       <ChatHeader
@@ -74,12 +106,25 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
         onPersonaChange={handlePersonaChange}
         disabled={isStreaming || chatId !== undefined || hasStartedChat}
       />
-      <ChatMessages messages={messages} persona={persona} isThinking={isThinking} onSuggestionClick={handleSend} />
+      <ChatMessages
+        messages={messages}
+        persona={persona}
+        isThinking={isThinking}
+        isStreaming={isStreaming}
+        chatId={chatId}
+        onSuggestionClick={handleSend}
+        onEditMessage={handleEditMessage}
+        onRegenerate={handleRegenerate}
+      />
       <div className="border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         {guestLimitReached ? (
           <GuestLimitBanner />
         ) : (
-          <ChatComposer onSend={handleSend} isStreaming={isStreaming} placeholder={`Message ${persona.shortName}...`} />
+          <ChatComposer
+            onSend={handleSend}
+            isStreaming={isStreaming}
+            placeholder={`Message ${persona.shortName}...`}
+          />
         )}
       </div>
     </div>

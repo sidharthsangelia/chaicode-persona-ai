@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { cn } from "@/lib/utils";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -39,7 +40,7 @@ export default function RootLayout({
         {" "}
         <SidebarProvider>
           <AppSidebar />
-          {children}
+        <TooltipProvider>{children}</TooltipProvider>
         </SidebarProvider>
           <Toaster  />
       </body>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { MoreHorizontal, Pencil, Trash2, Check, X } from "lucide-react";
 import { toast } from "sonner";
-import { SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { SidebarMenuAction, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -26,6 +26,7 @@ export function ChatListItem({ chat }: { chat: { id: string; title: string | nul
   const [title, setTitle] = useState(chat.title ?? "Untitled chat");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { setOpenMobile } = useSidebar();
 
   function commitRename() {
     const trimmed = title.trim();
@@ -98,7 +99,7 @@ export function ChatListItem({ chat }: { chat: { id: string; title: string | nul
     <>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive} disabled={isPending} className="my-1">
-          <Link href={`/chat/${chat.id}`}>
+          <Link href={`/chat/${chat.id}`} onClick={() => setOpenMobile(false)}>
             <span className="truncate">{title}</span>
           </Link>
         </SidebarMenuButton>

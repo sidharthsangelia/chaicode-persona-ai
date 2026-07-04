@@ -31,3 +31,18 @@ export async function deleteChatAction(chatId: string) {
   revalidatePath("/", "layout");
   return { success: true as const };
 }
+
+
+export async function pruneMessagesFromAction(chatId: string, fromMessageId: string) {
+  const { userId } = await auth();
+  if (!userId) return { error: "Unauthorized" };
+
+  const chat = await prisma.chat.findFirst({ where: { id: chatId, userId } });
+  if (!chat) return { error: "Chat not found" };
+
+  const target = await prisma.message.findUnique({ where: { id: fromMessageId } });
+  if (!target || target.chatId !== chatId) return { error: "Message not found" };
+
+  await prisma.message.deleteMany({ where: { chatId, createdAt: { gte: target.createdAt } } });
+  return { success: true as const };
+}

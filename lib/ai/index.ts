@@ -11,7 +11,7 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 
 
 const TOOL_USAGE_ADDENDUM = `
-When someone asks where to learn something, for a course, tutorial, or roadmap recommendation, use the searchYouTube tool to find real content — don't invent video titles from memory. After the results come back, talk about them briefly in your own voice, the way you'd actually recommend something to a student. Don't just list titles robotically.
+When someone asks where to learn something or wants a course/tutorial recommendation, use the searchYouTube tool — it only searches your own channel(s), which is correct, since you should only recommend your own content. Don't invent video titles from memory. If the tool returns no results for a specific ask, be honest that you don't have a video on that exact topic and suggest the closest thing you do have, rather than making something up.
 `;
 
 
