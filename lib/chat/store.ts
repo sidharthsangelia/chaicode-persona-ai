@@ -31,11 +31,11 @@ export async function getChat(chatId: string, userId: string) {
   return {
     id: chat.id,
     personaId: chat.personaId,
-    messages: chat.messages.map((m) => ({
-      id: m.id,
-      role: m.role as "user" | "assistant",
-      parts: m.parts as UIMessage["parts"],
-    })),
+messages: chat.messages.map((m: (typeof chat.messages)[number]) => ({
+  id: m.id,
+  role: m.role as "user" | "assistant",
+  parts: m.parts as UIMessage["parts"],
+})),
   };
 }
 
