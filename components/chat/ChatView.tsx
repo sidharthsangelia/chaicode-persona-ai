@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { useUser } from "@clerk/nextjs";
 import { getPersonaMeta, DEFAULT_PERSONA_ID } from "@/lib/personas";
@@ -11,6 +10,7 @@ import { ChatMessages } from "./ChatMessages";
 import { ChatComposer } from "./ChatComposer";
 import { GuestLimitBanner } from "./GuestLimitBanner";
 import type { UIMessage } from "ai";
+import { useRouter } from "next/navigation";
 
 interface ChatViewProps {
   chatId?: string;
@@ -20,7 +20,7 @@ interface ChatViewProps {
 
 export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatViewProps) {
   const router = useRouter();
-  const { isSignedIn } = useUser();
+  const { isLoaded, isSignedIn } = useUser();
 
   const [personaId, setPersonaId] = useState(initialPersonaId ?? DEFAULT_PERSONA_ID);
   const persona = getPersonaMeta(personaId);
@@ -31,7 +31,9 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
     id: chatId ?? pendingChatId,
     messages: initialMessages,
     onFinish: () => {
-      if (isSignedIn && !chatId) router.replace(`/chat/${pendingChatId}`);
+      if (isLoaded && isSignedIn && !chatId) {
+        window.history.replaceState(null, "", `/chat/${pendingChatId}`);
+      }
     },
   });
 
@@ -48,7 +50,7 @@ export function ChatView({ chatId, initialMessages, initialPersonaId }: ChatView
 
   function handlePersonaChange(nextId: string) {
     if (chatId) {
-      router.push("/"); // existing chats keep their persona; switching starts fresh
+      router.push("/");
       return;
     }
     setPersonaId(nextId);
