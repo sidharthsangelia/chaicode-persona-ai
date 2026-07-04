@@ -24,7 +24,7 @@ import { LogIn } from "lucide-react";
 
 export async function AppSidebar() {
   const { userId } = await auth();
-  const chats = userId ? await listChats(userId) : [];
+ const chats: Awaited<ReturnType<typeof listChats>> = userId ? await listChats(userId) : [];
   const groups = groupChatsByDate(chats);
 
   return (
