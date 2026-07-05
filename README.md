@@ -134,4 +134,4 @@ The live version is deployed on Vercel at https://afterclass.thesidharth.com. An
 
 ## Documentation
 
-For details on how the personas were built, the prompt engineering approach, and how conversation context and guest chats are handled, see [DOCS.md](./DOCS.md).
+For details on how the personas were built, the prompt engineering approach, and how conversation context and guest chats are handled, see [DOCS.md](./docs.md).
