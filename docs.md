@@ -67,8 +67,8 @@ On top of the two persona specific prompts, a small addendum is appended to whic
 Screenshots of real conversations with both personas will be added here to show persona accuracy and conversation quality across a longer exchange.
 
  
-![Hitesh persona sample conversation](/hitesh-sample.png)
-![Piyush persona sample conversation](/piyush-sample.png)
+![Hitesh persona sample conversation](https://afterclass.thesidharth.com/hitesh-sample.png)
+![Piyush persona sample conversation](https://afterclass.thesidharth.com/piyush-sample.png)
  
 
 ## 6. Known limitations
