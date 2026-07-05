@@ -1,7 +1,6 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Spinner } from "@/components/ui/spinner";
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -25,7 +24,6 @@ import { UserMessage } from "./UserMessage";
 interface ChatMessagesProps {
   messages: UIMessage[];
   persona: PersonaMeta;
-  isThinking: boolean;
   isStreaming: boolean;
   chatId?: string;
   onSuggestionClick: (text: string) => void;
@@ -33,10 +31,22 @@ interface ChatMessagesProps {
   onRegenerate: (messageId: string) => void;
 }
 
+const PENDING_ID = "__pending-assistant__";
+
+function TypingIndicator({ label }: { label: string }) {
+  return (
+    <div className="flex h-6 items-center gap-1" role="status">
+      <span className="sr-only">{label}</span>
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.3s]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.15s]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" />
+    </div>
+  );
+}
+
 export function ChatMessages({
   messages,
   persona,
-  isThinking,
   isStreaming,
   chatId,
   onSuggestionClick,
@@ -49,7 +59,21 @@ export function ChatMessages({
     );
   }
 
-  const lastAssistantId = [...messages]
+  const lastMessage = messages[messages.length - 1];
+  const needsPendingPlaceholder =
+    isStreaming && (!lastMessage || lastMessage.role === "user");
+
+  // The placeholder lives in the same slot the real assistant message will
+  // occupy, so the dots -> text transition happens inside one continuous
+  // bubble instead of swapping DOM nodes.
+  const displayMessages = needsPendingPlaceholder
+    ? [
+        ...messages,
+        { id: PENDING_ID, role: "assistant", parts: [] } as UIMessage,
+      ]
+    : messages;
+
+  const lastAssistantId = [...displayMessages]
     .reverse()
     .find((m) => m.role === "assistant")?.id;
 
@@ -71,17 +95,18 @@ export function ChatMessages({
     px-4
     py-6
   "
-            aria-busy={isThinking}
           >
-            {messages.map((message, index) => {
+            {displayMessages.map((message, index) => {
               const isUser = message.role === "user";
+              const isPending = message.id === PENDING_ID;
               const text = message.parts
                 .filter((p) => p.type === "text")
                 .map((p) => p.text)
                 .join("");
               const isLastAssistant = message.id === lastAssistantId;
+              const isActiveAssistant = isPending || isLastAssistant;
 
-              const previousMessage = messages[index - 1];
+              const previousMessage = displayMessages[index - 1];
               const showAvatar =
                 !previousMessage || previousMessage.role !== "assistant";
 
@@ -105,8 +130,19 @@ export function ChatMessages({
                 );
               }
 
+              const showDots =
+                isStreaming && isActiveAssistant && text.trim().length === 0;
+              const showCursor =
+                isStreaming && isActiveAssistant && text.trim().length > 0;
+
               return (
-                <MessageScrollerItem key={message.id} messageId={message.id}>
+                // Keyed by slot, not message id, so the pending placeholder
+                // and the real streamed message reuse the same DOM node
+                // once the id swaps in — that's what removes the jump cut.
+                <MessageScrollerItem
+                  key={`slot-${index}`}
+                  messageId={message.id}
+                >
                   <div
                     className="
     group
@@ -129,46 +165,57 @@ export function ChatMessages({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div
-                        className={cn(
-                          `
+                      {showDots ? (
+                        <TypingIndicator
+                          label={`${persona.shortName} is typing`}
+                        />
+                      ) : (
+                        <div
+                          className={cn(
+                            `
       prose
       prose-neutral
       dark:prose-invert
       max-w-none
       text-[15px]
       leading-7
+      transition-opacity
+      duration-150
     `,
-                        )}
-                      >
-                        <Streamdown>{text}</Streamdown>
-                      </div>
+                            showCursor &&
+                              "after:ml-0.5 after:inline-block after:h-4 after:w-[2px] after:translate-y-0.5 after:animate-pulse after:bg-foreground/70 after:content-['']",
+                          )}
+                        >
+                          <Streamdown>{text}</Streamdown>
+                        </div>
+                      )}
 
-                      {message.parts.map((part, i) => {
-                        if (part.type !== "tool-searchYouTube") return null;
-                        if (
-                          part.state === "input-streaming" ||
-                          part.state === "input-available"
-                        ) {
-                          return <YouTubeResultsSkeleton key={i} />;
-                        }
-                        if (part.state === "output-available") {
-                          const output = part.output as {
-                            results?: YouTubeResult[];
-                            error?: string;
-                          };
-                          if (output.error) return null;
-                          return (
-                            <YouTubeResults
-                              key={i}
-                              results={output.results ?? []}
-                            />
-                          );
-                        }
-                        return null;
-                      })}
+                      {!isPending &&
+                        message.parts.map((part, i) => {
+                          if (part.type !== "tool-searchYouTube") return null;
+                          if (
+                            part.state === "input-streaming" ||
+                            part.state === "input-available"
+                          ) {
+                            return <YouTubeResultsSkeleton key={i} />;
+                          }
+                          if (part.state === "output-available") {
+                            const output = part.output as {
+                              results?: YouTubeResult[];
+                              error?: string;
+                            };
+                            if (output.error) return null;
+                            return (
+                              <YouTubeResults
+                                key={i}
+                                results={output.results ?? []}
+                              />
+                            );
+                          }
+                          return null;
+                        })}
 
-                      {!isStreaming && (
+                      {!isStreaming && !isPending && (
                         <MessageActions
                           onCopy={() => navigator.clipboard.writeText(text)}
                           onRegenerate={
@@ -192,25 +239,6 @@ export function ChatMessages({
                 </MessageScrollerItem>
               );
             })}
-
-            {isThinking && (
-              <MessageScrollerItem messageId="typing-marker">
-                <div className="flex gap-4 py-6">
-                  <div className="w-8 shrink-0">
-                    <Avatar className="mt-1 h-8 w-8">
-                      <AvatarImage src={persona.avatar} />
-                      <AvatarFallback className="text-xs font-semibold">
-                        {persona.initials}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  <div className="flex h-8 items-center gap-3 text-sm text-muted-foreground">
-                    <Spinner className="h-4 w-4" />
-                    <span>{persona.shortName} is thinking...</span>
-                  </div>
-                </div>
-              </MessageScrollerItem>
-            )}
           </MessageScrollerContent>
         </MessageScrollerViewport>
         <MessageScrollerButton />

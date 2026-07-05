@@ -11,5 +11,5 @@ export default async function ChatByIdPage({ params }: { params: Promise<{ id: s
   const chat = await getChat(id, userId!);
   if (!chat) notFound();
 
-  return <ChatView chatId={chat.id} initialMessages={chat.messages} initialPersonaId={chat.personaId} />;
+  return <ChatView key={chat.id} chatId={chat.id} initialMessages={chat.messages} initialPersonaId={chat.personaId} />;
 }

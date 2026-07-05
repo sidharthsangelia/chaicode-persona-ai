@@ -47,16 +47,14 @@ export function ChatView({
     messages: initialMessages,
     onFinish: () => {
       if (isLoaded && isSignedIn && !chatId) {
-        window.history.replaceState(null, "", `/chat/${pendingChatId}`);
+        router.replace(`/chat/${pendingChatId}`, { scroll: false });
         setHasStartedChat(true);
-        router.refresh();
       }
     },
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
-  const isThinking =
-    isStreaming && (messages.length === 0 || messages.at(-1)?.role === "user");
+
   const userMessageCount = useMemo(
     () => messages.filter((m) => m.role === "user").length,
     [messages],
@@ -127,8 +125,7 @@ export function ChatView({
       }
       clearGuestDraft();
       setHasStartedChat(true);
-      window.history.replaceState(null, "", `/chat/${pendingChatId}`);
-      router.refresh();
+      router.replace(`/chat/${pendingChatId}`, { scroll: false });
     })();
   }, [
     isLoaded,
@@ -187,7 +184,6 @@ export function ChatView({
       <ChatMessages
         messages={messages}
         persona={persona}
-        isThinking={isThinking}
         isStreaming={isStreaming}
         chatId={chatId}
         onSuggestionClick={handleSend}
