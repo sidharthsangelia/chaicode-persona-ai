@@ -22,6 +22,15 @@ export const MODELS = {
   enrich: "gpt-4.1-nano",
   /** One per lesson, reads a whole transcript. */
   summary: "gpt-4.1-nano",
+
+  // Query-time models sit in the user's latency budget, so the 20s reasoning
+  // model measured during ingest is disqualified outright regardless of cost.
+  /** 4-way route + guardrail classification. Small output, must be fast. */
+  route: "gpt-4.1-nano",
+  /** Step-back, sub-questions, HyDE. */
+  transform: "gpt-4.1-nano",
+  /** Corrective grading of the retrieved set, plus the retry query refinement. */
+  grade: "gpt-4.1-nano",
 } as const;
 
 const CACHE_DIR = ".rag-cache";
@@ -100,6 +109,50 @@ export async function cachedObject<T>({
 
   writeCache(key, result.object);
   return { object: result.object, cached: false, ms: Date.now() - started };
+}
+
+export interface FastObjectArgs<T> {
+  model: string;
+  prompt: string;
+  schema: z.ZodType<T>;
+  system?: string;
+  signal?: AbortSignal;
+  maxOutputTokens?: number;
+  temperature?: number;
+}
+
+/**
+ * Structured model call for the request path — deliberately NOT cached.
+ *
+ * cachedObject() writes to `.rag-cache/` on disk, which is right for ingest on a
+ * developer machine and wrong for a serverless request: Vercel's filesystem is
+ * read-only outside /tmp, and instances do not share state, so a disk cache
+ * would be a per-instance memory leak that rarely hits. Query-time caching, if
+ * it is ever worth adding, belongs in a shared store keyed by normalized query.
+ *
+ * `signal` is threaded through so an abandoned request stops paying for tokens
+ * the moment the user navigates away or cancels the stream.
+ */
+export async function fastObject<T>({
+  model,
+  prompt,
+  schema,
+  system,
+  signal,
+  maxOutputTokens,
+  temperature = 0.2,
+}: FastObjectArgs<T>): Promise<T> {
+  const { object } = await generateObject({
+    model: openai(model),
+    schema,
+    prompt,
+    system,
+    abortSignal: signal,
+    maxOutputTokens,
+    temperature,
+    maxRetries: 1, // a second retry costs more latency than the fallback path
+  });
+  return object;
 }
 
 /**

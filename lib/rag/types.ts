@@ -91,6 +91,30 @@ export interface LessonSummary {
   topics: string[];
 }
 
+/** A prior turn, used to resolve follow-up questions into standalone ones. */
+export interface ChatTurn {
+  role: "user" | "assistant";
+  text: string;
+}
+
+/**
+ * Renders recent turns for a prompt.
+ *
+ * Assistant turns are truncated hard: their role here is only to tell the model
+ * what "that" and "it" refer to in the next question, and a full grounded answer
+ * with citations would crowd out the actual instruction.
+ */
+export function formatHistory(turns: ChatTurn[], maxTurns = 6): string {
+  if (turns.length === 0) return "(no prior conversation)";
+  return turns
+    .slice(-maxTurns)
+    .map((t) => {
+      const text = t.role === "assistant" ? t.text.slice(0, 300) : t.text;
+      return `${t.role === "user" ? "User" : "Assistant"}: ${text}`;
+    })
+    .join("\n");
+}
+
 /** Folder names that carry no topic information and need a backfilled title. */
 export function isPlaceholderTitle(title: string): boolean {
   return /^(chapter|part|mini project|lesson)\s+\d+$/i.test(title.trim());

@@ -19,11 +19,17 @@ export const EMBEDDING_DIMS = 1536;
 const BATCH_SIZE = 100;
 const CONCURRENCY = 4;
 
+export interface EmbedOptions {
+  onProgress?: (done: number, total: number) => void;
+  signal?: AbortSignal;
+}
+
 export async function embedTexts(
   texts: string[],
-  onProgress?: (done: number, total: number) => void,
+  options: EmbedOptions = {},
 ): Promise<number[][]> {
   if (texts.length === 0) return [];
+  const { onProgress, signal } = options;
 
   const batches: string[][] = [];
   for (let i = 0; i < texts.length; i += BATCH_SIZE) {
@@ -34,7 +40,12 @@ export async function embedTexts(
   const model = openai.textEmbeddingModel(EMBEDDING_MODEL);
 
   const results = await mapPool(batches, CONCURRENCY, async (batch) => {
-    const { embeddings } = await embedMany({ model, values: batch, maxRetries: 3 });
+    const { embeddings } = await embedMany({
+      model,
+      values: batch,
+      maxRetries: 3,
+      abortSignal: signal,
+    });
     done += batch.length;
     onProgress?.(done, texts.length);
     return embeddings;

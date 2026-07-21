@@ -12,21 +12,26 @@
  * code change replays for free and only genuinely new work hits the API.
  */
 import "dotenv/config";
+import { prisma } from "../lib/prisma";
 import { type LessonWithCues, loadCourse } from "../lib/rag/catalog";
 import { windowCues } from "../lib/rag/chunk";
-import { buildEmbedText, buildLessonEmbedText, enrichSegment, summarizeLesson } from "../lib/rag/enrich";
 import { embedTexts } from "../lib/rag/embed";
+import {
+  buildEmbedText,
+  buildLessonEmbedText,
+  enrichSegment,
+  summarizeLesson,
+} from "../lib/rag/enrich";
 import { mapPool } from "../lib/rag/llm";
 import {
   CHUNK_COLLECTION,
-  LESSON_COLLECTION,
   collectionCounts,
   ensureCollections,
+  LESSON_COLLECTION,
   pointId,
   upsertPoints,
 } from "../lib/rag/qdrant";
 import { segmentLesson } from "../lib/rag/segment";
-import { prisma } from "../lib/prisma";
 import type { Chunk, Lesson, LessonSummary, Segment } from "../lib/rag/types";
 import { isPlaceholderTitle } from "../lib/rag/types";
 
@@ -65,7 +70,9 @@ function progress(label: string) {
   };
 }
 
-async function selectLessons(course: LessonWithCues[]): Promise<LessonWithCues[]> {
+async function selectLessons(
+  course: LessonWithCues[],
+): Promise<LessonWithCues[]> {
   let targets = course;
 
   if (MODULE) {
@@ -80,7 +87,9 @@ async function selectLessons(course: LessonWithCues[]): Promise<LessonWithCues[]
     });
     const hashes = new Map(known.map((k) => [k.id, k.contentHash]));
     const before = targets.length;
-    targets = targets.filter((l) => hashes.get(l.lesson.id) !== l.lesson.contentHash);
+    targets = targets.filter(
+      (l) => hashes.get(l.lesson.id) !== l.lesson.contentHash,
+    );
     if (before !== targets.length) {
       log("select", `${before - targets.length} lesson(s) unchanged, skipping`);
     }
@@ -104,7 +113,9 @@ async function build(targets: LessonWithCues[]): Promise<Built[]> {
     segments.map((segment) => ({
       lesson,
       segment,
-      windows: windowCues(cues.filter((c) => c.i >= segment.startCue && c.i <= segment.endCue)),
+      windows: windowCues(
+        cues.filter((c) => c.i >= segment.startCue && c.i <= segment.endCue),
+      ),
     })),
   );
 
@@ -211,15 +222,15 @@ async function writeQdrant(built: Built[]): Promise<void> {
     b.chunks.map((chunk) => ({ chunk, lesson: b.lesson, summary: b.summary })),
   );
 
-  const embP = progress("embedding");
   const chunkVectors = await embedTexts(
     allChunks.map(({ chunk, lesson }) => buildEmbedText(chunk, lesson)),
-    (done, total) => {
-      process.stderr.write(`\r  embedding chunks: ${done}/${total}`);
-      if (done === total) process.stderr.write("\n");
+    {
+      onProgress: (done, total) => {
+        process.stderr.write(`\r  embedding chunks: ${done}/${total}`);
+        if (done === total) process.stderr.write("\n");
+      },
     },
   );
-  void embP;
 
   const segmentTitles = new Map(
     built.flatMap((b) => b.segments.map((s) => [s.id, s.title] as const)),
@@ -299,8 +310,16 @@ async function main() {
   const chunkTotal = built.reduce((n, b) => n + b.chunks.length, 0);
   const segTotal = built.reduce((n, b) => n + b.segments.length, 0);
 
-  log("done", `${built.length} lessons · ${segTotal} segments · ${chunkTotal} chunks in ${((Date.now() - started) / 1000).toFixed(0)}s`);
-  log("qdrant", Object.entries(counts).map(([k, v]) => `${k}=${v}`).join("  "));
+  log(
+    "done",
+    `${built.length} lessons · ${segTotal} segments · ${chunkTotal} chunks in ${((Date.now() - started) / 1000).toFixed(0)}s`,
+  );
+  log(
+    "qdrant",
+    Object.entries(counts)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("  "),
+  );
 }
 
 main()
