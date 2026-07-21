@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CueWindow } from "./chunk";
-import { MODELS, cachedObject } from "./llm";
+import { cachedObject, MODELS } from "./llm";
 import type { Chunk, Lesson, LessonSummary, Segment } from "./types";
 import { formatTimestamp } from "./types";
 
@@ -85,7 +85,8 @@ Now describe each clip below. Clips are consecutive and overlapping excerpts of 
 
 ${clips}`;
 
-  let enriched: Array<{ ordinal: number; context: string; tags: string[] }> = [];
+  let enriched: Array<{ ordinal: number; context: string; tags: string[] }> =
+    [];
   try {
     const { object } = await cachedObject({
       model: MODELS.enrich,

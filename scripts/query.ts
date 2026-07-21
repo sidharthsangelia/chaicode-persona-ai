@@ -10,17 +10,17 @@
  */
 import "dotenv/config";
 import { prisma } from "../lib/prisma";
+import { embedTexts } from "../lib/rag/embed";
 import {
   DENSE_WEIGHT,
-  KEYWORD_WEIGHT,
   denseSearch,
   expandToSegments,
   hybridSearch,
+  KEYWORD_WEIGHT,
   keywordSearch,
   lessonSearch,
   rrfFuse,
 } from "../lib/rag/retrieve";
-import { embedTexts } from "../lib/rag/embed";
 import { formatTimestamp } from "../lib/rag/types";
 
 const argv = process.argv.slice(2);
@@ -29,7 +29,9 @@ const value = (flag: string) => {
   const i = argv.indexOf(flag);
   return i === -1 ? undefined : argv[i + 1];
 };
-const query = argv.filter((a, i) => !a.startsWith("--") && !argv[i - 1]?.startsWith("--")).join(" ");
+const query = argv
+  .filter((a, i) => !a.startsWith("--") && !argv[i - 1]?.startsWith("--"))
+  .join(" ");
 
 const K = Number(value("--k") ?? 6);
 const PER_LEG = Number(value("--per-leg") ?? 20);
@@ -44,7 +46,9 @@ function truncate(s: string, n: number) {
 
 async function main() {
   if (!query) {
-    console.log('usage: npx tsx scripts/query.ts "your question" [--k 6] [--legs] [--lessons] [--context] [--module N]');
+    console.log(
+      'usage: npx tsx scripts/query.ts "your question" [--k 6] [--legs] [--lessons] [--context] [--module N]',
+    );
     return;
   }
 
@@ -56,7 +60,9 @@ async function main() {
     const lessons = await lessonSearch(query, K);
     console.log(dim(`\nlesson-level search · ${Date.now() - t}ms\n`));
     for (const [i, l] of lessons.entries()) {
-      console.log(`${String(i + 1).padStart(2)}. ${l.score.toFixed(3)}  ${bold(l.displayTitle)}  ${dim(`Module ${l.moduleNum} · ${formatTimestamp(l.durationMs)}`)}`);
+      console.log(
+        `${String(i + 1).padStart(2)}. ${l.score.toFixed(3)}  ${bold(l.displayTitle)}  ${dim(`Module ${l.moduleNum} · ${formatTimestamp(l.durationMs)}`)}`,
+      );
       console.log(`    ${truncate(l.summary, 150)}`);
       console.log(dim(`    ${l.topics.slice(0, 6).join(" · ")}\n`));
     }
@@ -70,25 +76,45 @@ async function main() {
     const t = Date.now();
     const [vector] = await embedTexts([query]);
     const [dense, keyword] = await Promise.all([
-      denseSearch(vector, PER_LEG, MODULE !== undefined ? { moduleNum: MODULE } : undefined),
-      keywordSearch(query, PER_LEG, MODULE !== undefined ? { moduleNum: MODULE } : undefined),
+      denseSearch(
+        vector,
+        PER_LEG,
+        MODULE !== undefined ? { moduleNum: MODULE } : undefined,
+      ),
+      keywordSearch(
+        query,
+        PER_LEG,
+        MODULE !== undefined ? { moduleNum: MODULE } : undefined,
+      ),
     ]);
     const fused = rrfFuse([dense, keyword], {
       weights: [DENSE_WEIGHT, KEYWORD_WEIGHT],
     }).slice(0, K);
-    console.log(dim(`\nboth legs · ${Date.now() - t}ms · dense=${dense.length} keyword=${keyword.length}\n`));
+    console.log(
+      dim(
+        `\nboth legs · ${Date.now() - t}ms · dense=${dense.length} keyword=${keyword.length}\n`,
+      ),
+    );
 
-    const show = (label: string, list: typeof dense, scoreOf: (c: (typeof dense)[0]) => string) => {
+    const show = (
+      label: string,
+      list: typeof dense,
+      scoreOf: (c: (typeof dense)[0]) => string,
+    ) => {
       console.log(bold(label));
       if (list.length === 0) console.log(dim("    (no results)"));
       for (const [i, c] of list.slice(0, K).entries()) {
-        console.log(`  ${String(i + 1).padStart(2)}. ${scoreOf(c)}  M${c.moduleNum} ${truncate(c.lessonTitle, 34).padEnd(34)} ${formatTimestamp(c.startMs)}  ${dim(truncate(c.segmentTitle, 40))}`);
+        console.log(
+          `  ${String(i + 1).padStart(2)}. ${scoreOf(c)}  M${c.moduleNum} ${truncate(c.lessonTitle, 34).padEnd(34)} ${formatTimestamp(c.startMs)}  ${dim(truncate(c.segmentTitle, 40))}`,
+        );
       }
       console.log();
     };
 
     show("DENSE ONLY (semantic)", dense, (c) => (c.denseScore ?? 0).toFixed(3));
-    show("KEYWORD ONLY (tsvector)", keyword, (c) => (c.keywordScore ?? 0).toFixed(4));
+    show("KEYWORD ONLY (tsvector)", keyword, (c) =>
+      (c.keywordScore ?? 0).toFixed(4),
+    );
 
     console.log(bold("FUSED (RRF)"));
     for (const [i, c] of fused.entries()) {
@@ -97,7 +123,9 @@ async function main() {
         c.keywordRank !== undefined ? `K#${c.keywordRank + 1}` : "K–",
       ].join(" ");
       const both = c.denseRank !== undefined && c.keywordRank !== undefined;
-      console.log(`  ${String(i + 1).padStart(2)}. ${c.rrf.toFixed(4)} ${dim(legs)}${both ? " ✓both" : "      "}  M${c.moduleNum} ${truncate(c.lessonTitle, 32).padEnd(32)} ${formatTimestamp(c.startMs)}`);
+      console.log(
+        `  ${String(i + 1).padStart(2)}. ${c.rrf.toFixed(4)} ${dim(legs)}${both ? " ✓both" : "      "}  M${c.moduleNum} ${truncate(c.lessonTitle, 32).padEnd(32)} ${formatTimestamp(c.startMs)}`,
+      );
     }
     console.log();
     return;
@@ -122,15 +150,22 @@ async function main() {
     console.log(`    ${dim("topic  ")} ${c.segmentTitle}`);
     console.log(`    ${dim("context")} ${truncate(c.context, 150)}`);
     console.log(`    ${dim("said   ")} ${truncate(c.text, 150)}`);
-    if (c.tags.length) console.log(`    ${dim("tags   ")} ${dim(c.tags.slice(0, 8).join(" · "))}`);
+    if (c.tags.length)
+      console.log(
+        `    ${dim("tags   ")} ${dim(c.tags.slice(0, 8).join(" · "))}`,
+      );
     console.log();
   }
 
   if (flags.has("--context")) {
     const segments = await expandToSegments(results.slice(0, 2));
-    console.log(bold("\n── parent segments the answering model would read ──\n"));
+    console.log(
+      bold("\n── parent segments the answering model would read ──\n"),
+    );
     for (const s of segments) {
-      console.log(`${bold(s.title)}  ${formatTimestamp(s.startMs)}-${formatTimestamp(s.endMs)}  ${dim(`${Math.round(s.text.length / 4)} tokens`)}`);
+      console.log(
+        `${bold(s.title)}  ${formatTimestamp(s.startMs)}-${formatTimestamp(s.endMs)}  ${dim(`${Math.round(s.text.length / 4)} tokens`)}`,
+      );
       console.log(`${truncate(s.text, 600)}\n`);
     }
   }

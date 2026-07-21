@@ -61,10 +61,14 @@ function buildWindow(cues: Cue[], from: number, to: number): CueWindow {
  * carried through untouched, so emitted indices stay valid against the full
  * lesson regardless of where the slice came from.
  */
-export function windowCues(cues: Cue[], options: WindowOptions = {}): CueWindow[] {
+export function windowCues(
+  cues: Cue[],
+  options: WindowOptions = {},
+): CueWindow[] {
   const opts = { ...DEFAULTS, ...options };
   if (cues.length === 0) return [];
-  if (cues.length <= opts.minCues) return [buildWindow(cues, 0, cues.length - 1)];
+  if (cues.length <= opts.minCues)
+    return [buildWindow(cues, 0, cues.length - 1)];
 
   const windows: CueWindow[] = [];
   let start = 0;

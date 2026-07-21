@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { fallbackSegments } from "./chunk";
-import { MODELS, cachedObject } from "./llm";
+import { cachedObject, MODELS } from "./llm";
 import type { Cue, Lesson, Segment } from "./types";
 
 /**
@@ -27,7 +27,10 @@ const DEDUPE_CUES = 4;
 const boundarySchema = z.object({
   boundaries: z.array(
     z.object({
-      startCue: z.number().int().describe("Index of the cue that starts this topic block"),
+      startCue: z
+        .number()
+        .int()
+        .describe("Index of the cue that starts this topic block"),
       title: z.string().describe("Short descriptive title for the topic block"),
     }),
   ),
@@ -98,7 +101,9 @@ ${numbered}`;
 /** Duration of the block starting at `boundaries[i]`, through to the next cut. */
 function blockMs(boundaries: RawBoundary[], i: number, cues: Cue[]): number {
   const endCue =
-    i + 1 < boundaries.length ? boundaries[i + 1].startCue - 1 : cues.length - 1;
+    i + 1 < boundaries.length
+      ? boundaries[i + 1].startCue - 1
+      : cues.length - 1;
   return cues[endCue].endMs - cues[boundaries[i].startCue].startMs;
 }
 
@@ -109,15 +114,21 @@ function splitOversized(boundaries: RawBoundary[], cues: Cue[]): RawBoundary[] {
   for (let i = 0; i < boundaries.length; i++) {
     out.push(boundaries[i]);
     const endCue =
-      i + 1 < boundaries.length ? boundaries[i + 1].startCue - 1 : cues.length - 1;
+      i + 1 < boundaries.length
+        ? boundaries[i + 1].startCue - 1
+        : cues.length - 1;
     let cursor = boundaries[i].startCue;
 
     while (cues[endCue].endMs - cues[cursor].startMs > MAX_MS) {
       const splitAt = cues.findIndex(
-        (c, idx) => idx > cursor && c.startMs - cues[cursor].startMs >= TARGET_MS,
+        (c, idx) =>
+          idx > cursor && c.startMs - cues[cursor].startMs >= TARGET_MS,
       );
       if (splitAt <= cursor || splitAt > endCue) break;
-      out.push({ startCue: splitAt, title: `${boundaries[i].title} (continued)` });
+      out.push({
+        startCue: splitAt,
+        title: `${boundaries[i].title} (continued)`,
+      });
       cursor = splitAt;
     }
   }
@@ -133,7 +144,10 @@ function splitOversized(boundaries: RawBoundary[], cues: Cue[]): RawBoundary[] {
  * leaves the final block unchecked and lets a sliver through at the end of a
  * lesson. Loops to fixpoint because merging can leave the result still short.
  */
-function mergeUndersized(boundaries: RawBoundary[], cues: Cue[]): RawBoundary[] {
+function mergeUndersized(
+  boundaries: RawBoundary[],
+  cues: Cue[],
+): RawBoundary[] {
   const out = [...boundaries];
 
   // Each pass removes exactly one boundary, so the initial length bounds the
@@ -173,7 +187,10 @@ function normalize(raw: RawBoundary[], cues: Cue[]): RawBoundary[] {
   // against the last KEPT boundary, not the previous input element — otherwise
   // a run of close cuts drops entries that are far enough from what survived.
   boundaries = boundaries.reduce<RawBoundary[]>((kept, b) => {
-    if (kept.length === 0 || b.startCue - kept[kept.length - 1].startCue > DEDUPE_CUES) {
+    if (
+      kept.length === 0 ||
+      b.startCue - kept[kept.length - 1].startCue > DEDUPE_CUES
+    ) {
       kept.push(b);
     }
     return kept;
@@ -199,7 +216,9 @@ function toSegments(
   return boundaries.map((b, i) => {
     const startCue = b.startCue;
     const endCue =
-      i + 1 < boundaries.length ? boundaries[i + 1].startCue - 1 : cues.length - 1;
+      i + 1 < boundaries.length
+        ? boundaries[i + 1].startCue - 1
+        : cues.length - 1;
     const slice = cues.slice(startCue, endCue + 1);
 
     return {
@@ -211,7 +230,11 @@ function toSegments(
       endCue,
       startMs: slice[0].startMs,
       endMs: slice[slice.length - 1].endMs,
-      text: slice.map((c) => c.text).join(" ").replace(/\s+/g, " ").trim(),
+      text: slice
+        .map((c) => c.text)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim(),
     };
   });
 }

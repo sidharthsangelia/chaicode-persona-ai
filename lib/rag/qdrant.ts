@@ -134,7 +134,11 @@ const UPSERT_BATCH = 200;
 
 export async function upsertPoints(
   collection: string,
-  points: Array<{ id: string; vector: number[]; payload: Record<string, unknown> }>,
+  points: Array<{
+    id: string;
+    vector: number[];
+    payload: Record<string, unknown>;
+  }>,
 ): Promise<void> {
   const c = qdrant();
   for (let i = 0; i < points.length; i += UPSERT_BATCH) {
