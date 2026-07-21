@@ -6,6 +6,7 @@ import {
   LESSON_COLLECTION,
   qdrant,
 } from "./qdrant";
+import { formatTimestamp } from "./types";
 
 /**
  * Hybrid retrieval: a dense leg (Qdrant, cosine over embeddings) and a keyword
@@ -37,6 +38,12 @@ export interface RetrievedChunk {
   denseScore?: number;
   keywordRank?: number;
   keywordScore?: number;
+  /**
+   * Labels of the queries that surfaced this chunk, e.g. ["standalone", "hyde"].
+   * Multi-query retrieval is otherwise opaque — this is what makes it possible to
+   * see that HyDE is pulling its weight, or that step-back is only adding noise.
+   */
+  matchedBy: string[];
   /** Fused score. Only meaningful relative to other results in the same fusion. */
   rrf: number;
 }
@@ -77,6 +84,7 @@ function fromPayload(payload: ChunkPayload, rrf = 0): RetrievedChunk {
     text: payload.text,
     context: payload.context,
     tags: payload.tags ?? [],
+    matchedBy: [],
     rrf,
   };
 }
@@ -205,6 +213,7 @@ export async function keywordSearch(
     text: row.text,
     context: row.context,
     tags: row.tags ?? [],
+    matchedBy: [],
     keywordRank: i,
     keywordScore: Number(row.rank),
     rrf: 0,
@@ -248,35 +257,54 @@ export interface FusionOptions {
   k?: number;
   /** Per-list trust weights, positionally matched to `lists`. Defaults to 1. */
   weights?: number[];
+  /** Per-list provenance labels, positionally matched to `lists`. */
+  labels?: string[];
 }
 
 export function rrfFuse(
   lists: RetrievedChunk[][],
   options: FusionOptions = {},
 ): RetrievedChunk[] {
-  const { k = RRF_K, weights = [] } = options;
+  const { k = RRF_K, weights = [], labels = [] } = options;
   const merged = new Map<string, RetrievedChunk>();
 
   lists.forEach((list, listIndex) => {
     const weight = weights[listIndex] ?? 1;
+    const label = labels[listIndex];
 
     list.forEach((item, rank) => {
-      const existing = merged.get(item.chunkId);
       const contribution = weight / (k + rank);
+      const existing = merged.get(item.chunkId);
 
       if (!existing) {
-        merged.set(item.chunkId, { ...item, rrf: contribution });
+        merged.set(item.chunkId, {
+          ...item,
+          matchedBy: label ? [label] : [],
+          rrf: contribution,
+        });
         return;
       }
 
       existing.rrf += contribution;
+      if (label && !existing.matchedBy.includes(label)) {
+        existing.matchedBy.push(label);
+      }
       // Keep whichever leg's diagnostics are present, so the CLI can show that
-      // a result was found by both and where each ranked it.
-      if (item.denseRank !== undefined) {
+      // a result was found by both and where each ranked it. Best rank wins,
+      // since a later list finding it deeper says nothing about the earlier hit.
+      if (
+        item.denseRank !== undefined &&
+        (existing.denseRank === undefined ||
+          item.denseRank < existing.denseRank)
+      ) {
         existing.denseRank = item.denseRank;
         existing.denseScore = item.denseScore;
       }
-      if (item.keywordRank !== undefined) {
+      if (
+        item.keywordRank !== undefined &&
+        (existing.keywordRank === undefined ||
+          item.keywordRank < existing.keywordRank)
+      ) {
         existing.keywordRank = item.keywordRank;
         existing.keywordScore = item.keywordScore;
       }
@@ -286,43 +314,100 @@ export function rrfFuse(
   return [...merged.values()].sort((a, b) => b.rrf - a.rrf);
 }
 
+export type RetrievalLeg = "dense" | "keyword";
+
+/**
+ * One generated query and how much to trust it.
+ *
+ * Not every query belongs in every leg. A HyDE passage is a paragraph of
+ * hypothetical prose; OR-joining its ~40 terms into the keyword leg would
+ * reproduce exactly the common-word noise that weighting had to fix, so it runs
+ * dense-only. Weights then encode that the user's actual question is worth more
+ * than a broadened restatement of it.
+ */
+export interface QuerySpec {
+  text: string;
+  legs: ReadonlyArray<RetrievalLeg>;
+  /** Trust multiplier applied on top of the per-leg weight. */
+  weight: number;
+  /** Provenance label, propagated to RetrievedChunk.matchedBy. */
+  label: string;
+}
+
+const BOTH_LEGS: ReadonlyArray<RetrievalLeg> = ["dense", "keyword"];
+
+function normalizeSpecs(
+  queries: ReadonlyArray<string | QuerySpec>,
+): QuerySpec[] {
+  return queries
+    .map((q, i) =>
+      typeof q === "string"
+        ? { text: q, legs: BOTH_LEGS, weight: 1, label: `q${i + 1}` }
+        : q,
+    )
+    .filter((spec) => spec.text.trim().length > 0);
+}
+
 export interface HybridOptions {
-  /** How many to pull from EACH leg before fusing. */
+  /** How many to pull from EACH list before fusing. */
   perLeg?: number;
   /** How many fused results to return. */
   limit?: number;
   filter?: RetrievalFilter;
+  /**
+   * Cancels the embedding request and stops before issuing searches. Neither
+   * the Qdrant client nor Prisma accepts an AbortSignal, so in-flight searches
+   * still complete — this bounds wasted work rather than eliminating it.
+   */
+  signal?: AbortSignal;
 }
 
 /**
- * Runs both legs for a set of queries and fuses everything into one ranking.
+ * Runs every query through its configured legs and fuses the lot into one
+ * ranking.
  *
- * Accepting multiple queries is what lets the query-transform stage plug in
- * later: step-back, sub-questions and HyDE all become additional lists in the
- * same fusion, with no change to this function.
+ * All searches are issued in parallel, so N queries cost roughly one round trip
+ * rather than N — which is what makes multi-query retrieval affordable inside a
+ * request budget.
  */
 export async function hybridSearch(
-  queries: string[],
+  queries: ReadonlyArray<string | QuerySpec>,
   options: HybridOptions = {},
 ): Promise<RetrievedChunk[]> {
-  const { perLeg = 20, limit = 8, filter } = options;
-  if (queries.length === 0) return [];
+  const { perLeg = 20, limit = 8, filter, signal } = options;
 
-  const vectors = await embedTexts(queries);
+  const specs = normalizeSpecs(queries);
+  if (specs.length === 0) return [];
 
-  // Order matters: the weights array below is positional, so every dense list
-  // comes first and every keyword list second.
+  const denseSpecs = specs.filter((s) => s.legs.includes("dense"));
+  const keywordSpecs = specs.filter((s) => s.legs.includes("keyword"));
+
+  // One batched embedding request for every dense query.
+  const vectors = denseSpecs.length
+    ? await embedTexts(
+        denseSpecs.map((s) => s.text),
+        { signal },
+      )
+    : [];
+
+  signal?.throwIfAborted();
+
   const lists = await Promise.all([
-    ...vectors.map((v) => denseSearch(v, perLeg, filter)),
-    ...queries.map((q) => keywordSearch(q, perLeg, filter)),
+    ...denseSpecs.map((_, i) => denseSearch(vectors[i], perLeg, filter)),
+    ...keywordSpecs.map((s) => keywordSearch(s.text, perLeg, filter)),
   ]);
 
+  // These three arrays are positionally aligned with `lists` by construction.
   const weights = [
-    ...vectors.map(() => DENSE_WEIGHT),
-    ...queries.map(() => KEYWORD_WEIGHT),
+    ...denseSpecs.map((s) => s.weight * DENSE_WEIGHT),
+    ...keywordSpecs.map((s) => s.weight * KEYWORD_WEIGHT),
+  ];
+  const labels = [
+    ...denseSpecs.map((s) => s.label),
+    ...keywordSpecs.map((s) => s.label),
   ];
 
-  return rrfFuse(lists, { weights }).slice(0, limit);
+  return rrfFuse(lists, { weights, labels }).slice(0, limit);
 }
 
 export interface SegmentContext {
@@ -373,6 +458,45 @@ export async function expandToSegments(
       endMs: s.endMs,
       text: s.text,
     }));
+}
+
+/**
+ * Compact outline of the whole course, for CATALOG-routed questions.
+ *
+ * "What's in module 5" and "how long is the course" are answered from structure,
+ * not from transcripts. The entire outline is ~1k tokens, so handing it over
+ * whole is both cheaper and more accurate than retrieving clips and hoping the
+ * shape of the course can be inferred from them.
+ */
+export async function getCourseOutline(): Promise<string> {
+  const lessons = await prisma.courseLesson.findMany({
+    orderBy: { courseOrder: "asc" },
+    select: {
+      moduleNum: true,
+      moduleLabel: true,
+      displayTitle: true,
+      durationMs: true,
+      instructor: true,
+    },
+  });
+
+  const totalMs = lessons.reduce((n, l) => n + l.durationMs, 0);
+  const lines: string[] = [
+    `Course: Expo / React Native mobile development`,
+    `${lessons.length} lessons across ${new Set(lessons.map((l) => l.moduleNum)).size} modules, ${(totalMs / 3_600_000).toFixed(1)} hours total`,
+    "",
+  ];
+
+  let currentModule = -1;
+  for (const l of lessons) {
+    if (l.moduleNum !== currentModule) {
+      currentModule = l.moduleNum;
+      lines.push(`${l.moduleLabel}:`);
+    }
+    lines.push(`  - ${l.displayTitle} (${formatTimestamp(l.durationMs)})`);
+  }
+
+  return lines.join("\n");
 }
 
 export interface RetrievedLesson {
