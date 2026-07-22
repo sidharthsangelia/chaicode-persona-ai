@@ -3,7 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import type { ChatMessage } from "@/lib/chat/messages";
-import { ensureChat, ensureUser, saveTurn } from "@/lib/chat/store";
+import { ensureChat, saveTurn } from "@/lib/chat/store";
 import { prisma } from "@/lib/prisma";
 
 export async function renameChatAction(chatId: string, title: string) {
@@ -43,14 +43,13 @@ export async function pruneMessagesFromAction(
   const { userId } = await auth();
   if (!userId) return { error: "Unauthorized" };
 
-  const chat = await prisma.chat.findFirst({ where: { id: chatId, userId } });
-  if (!chat) return { error: "Chat not found" };
-
-  const target = await prisma.message.findUnique({
-    where: { id: fromMessageId },
+  // One lookup rather than three: matching on the chat's owner proves the
+  // message is in this user's chat and hands back the cutoff at the same time.
+  const target = await prisma.message.findFirst({
+    where: { id: fromMessageId, chatId, chat: { userId } },
+    select: { createdAt: true },
   });
-  if (!target || target.chatId !== chatId)
-    return { error: "Message not found" };
+  if (!target) return { error: "Message not found" };
 
   await prisma.message.deleteMany({
     where: { chatId, createdAt: { gte: target.createdAt } },
@@ -75,8 +74,8 @@ export async function importGuestChatAction({
       .find((m) => m.role === "user")
       ?.parts.find((p) => p.type === "text")?.text ?? "New chat";
 
-  await ensureUser(userId);
-  await ensureChat({ chatId, userId, personaId, firstUserText });
+  const owned = await ensureChat({ chatId, userId, personaId, firstUserText });
+  if (!owned) return { error: "Chat not found" };
   await saveTurn({ chatId, messages });
 
   revalidatePath("/", "layout");

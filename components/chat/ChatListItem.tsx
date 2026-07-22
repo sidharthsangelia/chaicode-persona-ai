@@ -1,22 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Check, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { MoreHorizontal, Pencil, Trash2, Check, X } from "lucide-react";
+import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
-import {
-  SidebarMenuAction,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { deleteChatAction, renameChatAction } from "@/actions/chatActions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,13 +16,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { deleteChatAction, renameChatAction } from "@/actions/chatActions";
-
+import {
+  SidebarMenuAction,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { useActiveChat } from "@/lib/chat/activeChatContext";
 import { getPersonaMeta } from "@/lib/personas";
 import { cn } from "@/lib/utils";
-import { useActiveChat } from "@/lib/chat/activeChatContext";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 export function ChatListItem({
   chat,
@@ -41,50 +40,54 @@ export function ChatListItem({
   chat: { id: string; title: string | null; personaId: string };
 }) {
   const router = useRouter();
-const pathname = usePathname();
-const { activeChatId } = useActiveChat();
-
-const isActive =
-  pathname === `/chat/${chat.id}` ||
-  (activeChatId !== null && activeChatId === chat.id);
-  const persona = getPersonaMeta(chat.personaId);
-
-  console.log("row:", chat.id, "isActive:", isActive, "pathname:", pathname, "activeChatId:", activeChatId);
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState(chat.title ?? "Untitled chat");
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const pathname = usePathname();
+  const { activeChatId } = useActiveChat();
   const { setOpenMobile } = useSidebar();
 
-  const originalTitle = chat.title ?? "Untitled chat";
+  const serverTitle = chat.title ?? "Untitled chat";
+  const persona = getPersonaMeta(chat.personaId);
+
+  // activeChatId covers the gap on a brand new chat, where the row exists
+  // before the URL has caught up with it.
+  const isActive = pathname === `/chat/${chat.id}` || activeChatId === chat.id;
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(serverTitle);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  // Both actions revalidate the whole layout, which is a slow round trip to sit
+  // through for something the user already decided. The row shows the outcome
+  // immediately and React rolls it back on its own if the action fails.
+  const [title, setOptimisticTitle] = useOptimistic(serverTitle);
+  const [isDeleted, setOptimisticDeleted] = useOptimistic(false);
 
   function cancelRename() {
-    setTitle(originalTitle);
+    setDraft(serverTitle);
     setIsEditing(false);
   }
 
   function commitRename() {
-    const trimmed = title.trim();
+    const trimmed = draft.trim();
     setIsEditing(false);
-    if (!trimmed || trimmed === originalTitle) {
-      setTitle(originalTitle);
+    if (!trimmed || trimmed === serverTitle) {
+      setDraft(serverTitle);
       return;
     }
     startTransition(async () => {
+      setOptimisticTitle(trimmed);
       const result = await renameChatAction(chat.id, trimmed);
       if (result?.error) {
         toast.error(result.error);
-        setTitle(originalTitle);
-        return;
+        setDraft(serverTitle);
       }
-      toast.success("Conversation renamed");
     });
   }
 
   function confirmDelete() {
     setShowDeleteDialog(false);
     startTransition(async () => {
+      setOptimisticDeleted(true);
       const result = await deleteChatAction(chat.id);
       if (result?.error) {
         toast.error(result.error);
@@ -95,13 +98,15 @@ const isActive =
     });
   }
 
+  if (isDeleted) return null;
+
   if (isEditing) {
     return (
-      <SidebarMenuItem >
-        <div className="flex items-center gap-1 px-1.5 py-0.5 ">
+      <SidebarMenuItem>
+        <div className="flex items-center gap-1 px-1.5 py-0.5">
           <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
             onBlur={commitRename}
             onKeyDown={(e) => {
               if (e.key === "Enter") commitRename();
@@ -109,6 +114,7 @@ const isActive =
             }}
             autoFocus
             onFocus={(e) => e.target.select()}
+            aria-label="Conversation title"
             className="h-8 rounded-md text-sm"
           />
           <button
@@ -134,23 +140,34 @@ const isActive =
 
   return (
     <>
-     <SidebarMenuItem className={cn("group/item relative", isPending && "pointer-events-none opacity-60")}>
-  <SidebarMenuButton asChild isActive={isActive} disabled={isPending} tooltip={title}>
-    <Link href={`/chat/${chat.id}`} onClick={() => setOpenMobile(false)} className="pr-7">
-      <Avatar className="h-4 w-4 shrink-0">
-        <AvatarFallback className="text-[8px]">{persona.initials}</AvatarFallback>
-      </Avatar>
-      <span className="truncate">{title}</span>
-    </Link>
-  </SidebarMenuButton>
+      <SidebarMenuItem
+        className={cn("group/item relative", isPending && "opacity-70")}
+      >
+        <SidebarMenuButton asChild isActive={isActive} tooltip={title}>
+          <Link
+            href={`/chat/${chat.id}`}
+            onClick={() => setOpenMobile(false)}
+            className="pr-7"
+          >
+            <Avatar className="h-4 w-4 shrink-0">
+              <AvatarFallback className="text-[8px]">
+                {persona.initials}
+              </AvatarFallback>
+            </Avatar>
+            <span className="truncate">{title}</span>
+          </Link>
+        </SidebarMenuButton>
 
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <SidebarMenuAction showOnHover className="peer-data-[active=true]/menu-button:opacity-100">
-        <MoreHorizontal className="h-4 w-4" />
-        <span className="sr-only">Conversation options</span>
-      </SidebarMenuAction>
-    </DropdownMenuTrigger>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuAction
+              showOnHover
+              className="peer-data-[active=true]/menu-button:opacity-100"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Conversation options</span>
+            </SidebarMenuAction>
+          </DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="start" className="w-44">
             <DropdownMenuItem
               onSelect={() => setIsEditing(true)}
@@ -175,8 +192,8 @@ const isActive =
           <AlertDialogHeader>
             <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes this conversation and all associated
-              messages. This action cannot be undone.
+              This permanently deletes &ldquo;{title}&rdquo; and every message
+              in it. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

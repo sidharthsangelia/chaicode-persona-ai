@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, BookOpen, X } from "lucide-react";
+import { ArrowUp, BookOpen, Square, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +20,10 @@ interface ChatComposerProps {
    * ungrounded — the mode has to travel with the message, not be read from state.
    */
   onSend: (text: string, courseModeOverride?: boolean) => void;
+  /** Aborts the in-flight answer. A course question can spend five seconds in
+   *  retrieval before its first token, which is far too long to leave someone
+   *  with no way out. */
+  onStop: () => void;
   isStreaming: boolean;
   placeholder: string;
   /** Course mode is sticky, so it lives in the chat, not in this component. */
@@ -29,6 +33,7 @@ interface ChatComposerProps {
 
 export function ChatComposer({
   onSend,
+  onStop,
   isStreaming,
   placeholder,
   courseMode,
@@ -184,7 +189,8 @@ export function ChatComposer({
                 if (!e.target.value.startsWith("/")) setDismissed(false);
               }}
               placeholder={courseMode ? "Ask about the course..." : placeholder}
-              disabled={isStreaming}
+              // Deliberately not disabled mid-answer: drafting the follow-up
+              // while the last one streams is normal. submit() is what refuses.
               rows={1}
               onKeyDown={handleKeyDown}
               aria-autocomplete="list"
@@ -209,24 +215,31 @@ export function ChatComposer({
               "
             />
 
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!input.trim() || isStreaming}
-              className={cn(
-                `
-                ml-2
-                h-9
-                w-9
-                shrink-0
-                rounded-full
-                transition-all
-              `,
-                !input.trim() && "opacity-50",
-              )}
-            >
-              <ArrowUp className="h-4 w-4" />
-            </Button>
+            {isStreaming ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                onClick={onStop}
+                aria-label="Stop generating"
+                className="ml-2 h-9 w-9 shrink-0 rounded-full"
+              >
+                <Square className="h-3.5 w-3.5 fill-current" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!input.trim()}
+                aria-label="Send message"
+                className={cn(
+                  "ml-2 h-9 w-9 shrink-0 rounded-full transition-all",
+                  !input.trim() && "opacity-50",
+                )}
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </form>

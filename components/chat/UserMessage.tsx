@@ -1,31 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { toast } from "sonner";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
- 
-import type { UIMessage } from "ai";
 import { pruneMessagesFromAction } from "@/actions/chatActions";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import type { ChatMessage } from "@/lib/chat/messages";
 import { MessageActions } from "./MessageAction";
 
 interface UserMessageProps {
-  message: UIMessage;
+  message: ChatMessage;
   text: string;
   chatId?: string;
   disabled: boolean;
-  onEditSubmit: (newText: string) => void;
+  /** Takes the id so ChatView can hand down one stable callback for every row. */
+  onEditSubmit: (messageId: string, newText: string) => void;
 }
 
-export function UserMessage({ message, text, chatId, disabled, onEditSubmit }: UserMessageProps) {
+/**
+ * Memoised for the same reason as AssistantMessage: a streaming answer
+ * re-renders the list on every token, and none of these change while it does.
+ */
+export const UserMessage = memo(function UserMessage({
+  message,
+  text,
+  chatId,
+  disabled,
+  onEditSubmit,
+}: UserMessageProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(text);
+
+  function cancel() {
+    setDraft(text);
+    setIsEditing(false);
+  }
 
   async function handleSubmit() {
     const trimmed = draft.trim();
     if (!trimmed || trimmed === text) {
-      setIsEditing(false);
-      setDraft(text);
+      cancel();
       return;
     }
 
@@ -38,7 +52,7 @@ export function UserMessage({ message, text, chatId, disabled, onEditSubmit }: U
     }
 
     setIsEditing(false);
-    onEditSubmit(trimmed);
+    onEditSubmit(message.id, trimmed);
   }
 
   if (isEditing) {
@@ -55,17 +69,16 @@ export function UserMessage({ message, text, chatId, disabled, onEditSubmit }: U
                 e.preventDefault();
                 handleSubmit();
               }
-              if (e.key === "Escape") {
-                setDraft(text);
-                setIsEditing(false);
-              }
+              if (e.key === "Escape") cancel();
             }}
           />
           <div className="flex justify-end gap-2">
-            <Button size="sm" variant="ghost" onClick={() => { setDraft(text); setIsEditing(false); }}>
+            <Button size="sm" variant="ghost" onClick={cancel}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSubmit}>Save & submit</Button>
+            <Button size="sm" onClick={handleSubmit}>
+              Save & submit
+            </Button>
           </div>
         </div>
       </div>
@@ -84,4 +97,4 @@ export function UserMessage({ message, text, chatId, disabled, onEditSubmit }: U
       />
     </div>
   );
-}
+});

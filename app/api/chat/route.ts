@@ -8,7 +8,7 @@ import {
 import { streamAnswer } from "@/lib/ai/answer";
 import { countUserMessages, GUEST_MESSAGE_LIMIT } from "@/lib/chat/guestLimit";
 import type { ChatMessage } from "@/lib/chat/messages";
-import { ensureChat, ensureUser, saveTurn } from "@/lib/chat/store";
+import { ensureChat, saveTurn } from "@/lib/chat/store";
 import { applyCitationFilter, createCitationFilter } from "@/lib/rag/citations";
 import { runRetrievalPipeline } from "@/lib/rag/pipeline";
 import { describeStage, INITIAL_STATUS } from "@/lib/rag/status";
@@ -55,17 +55,20 @@ export async function POST(req: Request) {
       });
     }
   } else if (chatId) {
-    await ensureUser(userId);
     const firstUserText =
       messages
         .find((m) => m.role === "user")
         ?.parts.find((p) => p.type === "text")?.text ?? "New chat";
-    await ensureChat({
+    const owned = await ensureChat({
       chatId,
       userId,
       personaId: personaId ?? "hitesh",
       firstUserText,
     });
+    // The id came from the request body, so it can name a chat this user does
+    // not own. Refuse loudly rather than streaming an answer that onFinish
+    // would then try to write into somebody else's thread.
+    if (!owned) return new Response("Not found", { status: 404 });
   }
 
   // The last USER message, not the last message: regenerating leaves an

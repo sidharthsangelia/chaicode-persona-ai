@@ -1,6 +1,12 @@
-import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
 import { SignInButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
+import { LogIn } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { Suspense } from "react";
+import { ChatListItem } from "@/components/chat/ChatListItem";
+import { ChatListSkeleton } from "@/components/chat/ChatListSkeleton";
+import { NewChatButton } from "@/components/chat/NewChatButton";
 import {
   Sidebar,
   SidebarContent,
@@ -14,18 +20,21 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { ChatRow, listChats } from "@/lib/chat/store";
-import { ChatListItem } from "@/components/chat/ChatListItem";
 import { groupChatsByDate } from "@/lib/chat/groupByDate";
-import { NewChatButton } from "@/components/chat/NewChatButton";
+import { listChats } from "@/lib/chat/store";
 import { SidebarUserButton } from "./SidebarUserButton";
-import Image from "next/image";
-import { LogIn } from "lucide-react";
 
+const emptyStateClass =
+  "px-4 py-8 text-center text-sm text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden";
+
+/**
+ * This component sits in the root layout, so anything it awaits is awaited by
+ * every page in the app before a single byte of HTML goes out. auth() is a
+ * local token read and cheap enough to keep here; the chat list is a Postgres
+ * round trip, so it renders behind Suspense and streams in on its own.
+ */
 export async function AppSidebar() {
   const { userId } = await auth();
-const chats: ChatRow[] = userId ? await listChats(userId) : [];
-  const groups = groupChatsByDate(chats);
 
   return (
     <Sidebar collapsible="icon">
@@ -38,10 +47,11 @@ const chats: ChatRow[] = userId ? await listChats(userId) : [];
             >
               <Image
                 src="/logo1.png"
-                alt="Logo"
+                alt=""
                 width={24}
                 height={24}
                 className="rounded-full"
+                priority
               />
               <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
                 After Class
@@ -71,29 +81,14 @@ const chats: ChatRow[] = userId ? await listChats(userId) : [];
 
       <SidebarContent>
         {userId ? (
-          groups.length > 0 ? (
-            groups.map((group) => (
-              <SidebarGroup key={group.label}>
-                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {group.chats.map((chat) => (
-                      <ChatListItem key={chat.id} chat={chat} />
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            ))
-          ) : (
-            <div className="px-4 py-8 text-center text-sm text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
-              Nothing here yet — start a conversation.
-            </div>
-          )
+          <Suspense fallback={<ChatListSkeleton />}>
+            <ChatList userId={userId} />
+          </Suspense>
         ) : (
-          <div className="px-4 py-8 text-center text-sm text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
+          <p className={emptyStateClass}>
             Your chat stays on this device. Sign in anytime to keep it and pick
             up from any device.
-          </div>
+          </p>
         )}
       </SidebarContent>
 
@@ -110,4 +105,24 @@ const chats: ChatRow[] = userId ? await listChats(userId) : [];
       <SidebarRail />
     </Sidebar>
   );
+}
+
+async function ChatList({ userId }: { userId: string }) {
+  const chats = await listChats(userId);
+  if (chats.length === 0) {
+    return <p className={emptyStateClass}>Nothing here yet. Start a chat.</p>;
+  }
+
+  return groupChatsByDate(chats).map((group) => (
+    <SidebarGroup key={group.label}>
+      <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {group.chats.map((chat) => (
+            <ChatListItem key={chat.id} chat={chat} />
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  ));
 }

@@ -1,31 +1,29 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
-import "./globals.css";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { cn } from "@/lib/utils";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/next";
+import type { Metadata } from "next";
+import "./globals.css";
+import { AppSidebar } from "@/components/AppSidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ActiveChatProvider } from "@/lib/chat/activeChatContext";
-import { Analytics } from '@vercel/analytics/next';
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
+/**
+ * No next/font loads here on purpose.
+ *
+ * Geist, Geist Mono and Inter were all being fetched, and none of them ever
+ * rendered: globals.css sets `--font-sans: DM Sans` on :root, which ships in a
+ * later stylesheet than the font vars and wins the tie on specificity. Three
+ * font families were downloaded on every visit to be overridden by a family
+ * that is not loaded at all, so the page falls through to the system stack.
+ *
+ * Removing them is purely a saving. Loading DM Sans and Space Mono for real is
+ * the separate, deliberate change, since that one alters how the app looks.
+ */
 export const metadata: Metadata = {
   title: "After Class",
   description:
-    "After Class is an AI-powered chat application that allows users to have conversations with different personas. Users can create, rename, and delete chats, as well as switch between different personas for a more personalized experience.",
+    "Ask a 22 hour Expo and React Native course anything and get the module, chapter and timestamp to jump to, answered in the voice of Hitesh Choudhary or Piyush Garg.",
 };
 
 export default function RootLayout({
@@ -37,23 +35,16 @@ export default function RootLayout({
     <ClerkProvider>
       <html
         lang="en"
-        className={cn(
-          "h-full",
-          "antialiased",
-          geistSans.variable,
-          geistMono.variable,
-          "font-sans",
-          inter.variable,
-        )}
+        className="h-full font-sans antialiased"
         suppressHydrationWarning
       >
-        <body className="min-h-full flex flex-col">
+        <body className="flex min-h-full flex-col">
           <TooltipProvider>
             <ActiveChatProvider>
               <SidebarProvider>
                 <AppSidebar />
                 {children}
-                 <Analytics />
+                <Analytics />
               </SidebarProvider>
             </ActiveChatProvider>
           </TooltipProvider>

@@ -3,8 +3,11 @@
 import { useChat } from "@ai-sdk/react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { importGuestChatAction } from "@/actions/chatActions";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  importGuestChatAction,
+  pruneMessagesFromAction,
+} from "@/actions/chatActions";
 import { useActiveChat } from "@/lib/chat/activeChatContext";
 import {
   clearGuestDraft,
@@ -53,7 +56,7 @@ export function ChatView({
   // would silently change what their next question means.
   const [courseMode, setCourseMode] = useState(false);
 
-  const { messages, sendMessage, status, setMessages, regenerate } =
+  const { messages, sendMessage, status, setMessages, regenerate, stop } =
     useChat<ChatMessage>({
       id: chatId ?? pendingChatId,
       messages: initialMessages,
@@ -64,6 +67,12 @@ export function ChatView({
         setRagStatus(null);
         if (isLoaded && isSignedIn && !chatId) {
           router.replace(`/chat/${pendingChatId}`, { scroll: false });
+          // The sidebar lives in the root layout, which both /chat and
+          // /chat/[id] share, so the navigation above reuses the cached copy
+          // and the new conversation never appears in the list. refresh()
+          // refetches the layout, which is the only way to get it there
+          // without a full reload.
+          router.refresh();
           setHasStartedChat(true);
         }
       },
@@ -155,49 +164,71 @@ export function ChatView({
     router,
   ]);
 
-  function handleSend(text: string, courseModeOverride?: boolean) {
-    if (guestLimitReached) return;
-    sendMessage(
-      { text },
-      {
-        body: {
-          personaId,
-          chatId: chatId ?? pendingChatId,
-          // The override carries the mode for "/course <question>", where the
-          // composer turned it on in this same tick and `courseMode` below is
-          // still the pre-render value.
-          courseMode: courseModeOverride ?? courseMode,
+  // The handlers below are wrapped because ChatMessages renders memoised rows:
+  // a fresh function identity on every render would defeat the memo and put the
+  // whole transcript back into the per-token render path.
+  const handleSend = useCallback(
+    (text: string, courseModeOverride?: boolean) => {
+      if (guestLimitReached) return;
+      sendMessage(
+        { text },
+        {
+          body: {
+            personaId,
+            chatId: chatId ?? pendingChatId,
+            // The override carries the mode for "/course <question>", where the
+            // composer turned it on in this same tick and `courseMode` below is
+            // still the pre-render value.
+            courseMode: courseModeOverride ?? courseMode,
+          },
         },
-      },
-    );
-  }
+      );
+    },
+    [
+      guestLimitReached,
+      sendMessage,
+      personaId,
+      chatId,
+      pendingChatId,
+      courseMode,
+    ],
+  );
 
   function handlePersonaChange(nextId: string) {
+    // Switching mid-conversation starts a fresh one, because the persona is
+    // fixed at chat creation and the transcript belongs to the other voice.
     if (chatId || hasStartedChat) {
-      window.location.assign("/");
+      router.push("/chat");
       return;
     }
     setPersonaId(nextId);
     setMessages([]);
   }
 
-  async function handleRegenerate(messageId: string) {
-    if (chatId ?? pendingChatId) {
-      const { pruneMessagesFromAction } = await import("@/actions/chatActions");
+  const handleRegenerate = useCallback(
+    async (messageId: string) => {
+      // Drops the old answer server-side first, so a reload does not resurrect
+      // the reply that was just replaced.
       await pruneMessagesFromAction(chatId ?? pendingChatId, messageId);
-    }
-    regenerate({ messageId });
-  }
+      regenerate({ messageId });
+    },
+    [chatId, pendingChatId, regenerate],
+  );
 
-  function handleEditMessage(messageId: string, newText: string) {
-    const index = messages.findIndex((m) => m.id === messageId);
-    if (index === -1) return;
-    setMessages([
-      ...messages.slice(0, index),
-      { ...messages[index], parts: [{ type: "text", text: newText }] },
-    ]);
-    regenerate();
-  }
+  const handleEditMessage = useCallback(
+    (messageId: string, newText: string) => {
+      setMessages((current) => {
+        const index = current.findIndex((m) => m.id === messageId);
+        if (index === -1) return current;
+        return [
+          ...current.slice(0, index),
+          { ...current[index], parts: [{ type: "text", text: newText }] },
+        ];
+      });
+      regenerate();
+    },
+    [setMessages, regenerate],
+  );
 
   return (
     <div className="flex h-dvh flex-1 flex-col bg-background">
@@ -224,6 +255,7 @@ export function ChatView({
         ) : (
           <ChatComposer
             onSend={handleSend}
+            onStop={stop}
             isStreaming={isStreaming}
             placeholder={`Message ${persona.shortName}...`}
             courseMode={courseMode}
