@@ -1,14 +1,32 @@
 "use client";
 
-import { useMemo } from "react";
-import { Sparkles, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { PersonaMeta } from "@/lib/personas";
-import { getGreeting } from "@/utils/greetings";
-import { STARTERS } from "@/utils/starters";
+import { getGreeting, getStableGreeting } from "@/utils/greetings";
+import { COURSE_STARTERS, STARTERS } from "@/utils/starters";
 
 function shuffle<T>(array: T[]): T[] {
   return [...array].sort(() => Math.random() - 0.5);
+}
+
+/**
+ * Two course questions and two persona questions, always.
+ *
+ * Drawing all four from one pool would sometimes show four career questions and
+ * hide the course entirely — and the course is the one thing this screen has to
+ * communicate, since nobody guesses that a chat box knows where dynamic routes
+ * are taught.
+ */
+function pickSuggestions(personaId: string, random: boolean): string[] {
+  const course = random ? shuffle(COURSE_STARTERS) : COURSE_STARTERS;
+  const persona = STARTERS[personaId] ?? [];
+  const mixed = [
+    ...course.slice(0, 2),
+    ...(random ? shuffle(persona) : persona).slice(0, 2),
+  ];
+  return random ? shuffle(mixed) : mixed;
 }
 
 export function ChatEmptyState({
@@ -18,11 +36,23 @@ export function ChatEmptyState({
   persona: PersonaMeta;
   onSuggestionClick: (text: string) => void;
 }) {
-  const suggestions = useMemo(() => {
-    return shuffle(STARTERS[persona.id] ?? []).slice(0, 4);
+  // The first paint is deterministic so it matches what the server sent; the
+  // random greeting and shuffled starters swap in on mount. Randomising during
+  // render would make the server and client disagree, and React responds to a
+  // hydration mismatch by discarding the server HTML for this whole subtree.
+  const [content, setContent] = useState(() => ({
+    greeting: getStableGreeting(persona.id),
+    suggestions: pickSuggestions(persona.id, false),
+  }));
+
+  useEffect(() => {
+    setContent({
+      greeting: getGreeting(persona.id),
+      suggestions: pickSuggestions(persona.id, true),
+    });
   }, [persona.id]);
 
-  const greeting = useMemo(() => getGreeting(persona.id), [persona.id]);
+  const { greeting, suggestions } = content;
 
   return (
     <div className="flex flex-1 items-center justify-center px-6">
@@ -34,12 +64,15 @@ export function ChatEmptyState({
             motion-safe:duration-500
           "
         >
-         
-
           <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             {greeting}
           </h1>
-        
+
+          <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+            Ask me anything about the Expo &amp; React Native course and
+            I&apos;ll explain it, then point you to the exact lesson and
+            timestamp.
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

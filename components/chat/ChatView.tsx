@@ -13,8 +13,8 @@ import {
 } from "@/lib/chat/guestDraft";
 import { GUEST_MESSAGE_LIMIT } from "@/lib/chat/guestLimit";
 import type { ChatMessage } from "@/lib/chat/messages";
-import type { RagStatus } from "@/lib/rag/status";
 import { DEFAULT_PERSONA_ID, getPersonaMeta } from "@/lib/personas";
+import type { RagStatus } from "@/lib/rag/status";
 import { ChatComposer } from "./ChatComposer";
 import { ChatHeader } from "./ChatHeader";
 import { ChatMessages } from "./ChatMessages";

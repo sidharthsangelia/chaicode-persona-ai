@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/message-scroller";
 import type { YouTubeResult } from "@/lib/ai/tools/youtube";
 import type { ChatMessage } from "@/lib/chat/messages";
-import type { RagStatus } from "@/lib/rag/status";
 import type { PersonaMeta } from "@/lib/personas";
+import type { RagStatus } from "@/lib/rag/status";
 import { cn } from "@/lib/utils";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { CourseCitations } from "./CourseCitations";

@@ -19,12 +19,6 @@ import { createYoutubeSearchTool } from "./tools/youtube";
  * Each route below gets only the instructions it needs, appended to the persona.
  */
 
-/** Instructor slugs from the catalog, as they should appear to a model. */
-const INSTRUCTOR_NAMES: Record<string, string> = {
-  hitesh: "Hitesh",
-  suraj: "Suraj Jha",
-};
-
 /**
  * Each persona's actual relationship to this course.
  *
@@ -65,6 +59,7 @@ How to answer:
 - Explain the thing properly, in your own words and your own voice. The learner should understand it from your reply alone, without watching anything. This is the one case where you can run longer than usual — take the space the explanation needs, but don't pad it.
 - Then point them at where it's taught, so they can go watch it if they want the full walkthrough.
 - Cite with a bracketed number that matches a source: [1], [3]. Put it right after the sentence it supports. When two sources back the same sentence write [1][2], not [1, 2]. Cite only the sources you actually used.
+- Each source is addressed as "Module N › Chapter M: Title". Naming the module and chapter in your sentence is good — "Suraj Module 4 ke Chapter 3 mein yeh cover karta hai" — as long as you copy them exactly from the source you are citing.
 - NEVER write a timestamp, a minute mark, or a duration yourself. The app fills the exact time in from the marker. Anything you type will be wrong.
 - Never claim you taught a clip that names a different instructor. Say who did.
 - Only state what the excerpts support. If they cover part of the question, answer that part and say plainly what the course doesn't show.
@@ -199,10 +194,11 @@ export function planAnswer(
     };
   }
 
-  const sources = buildSources(pipeline.chunks, pipeline.segments).map((s) => ({
-    ...s,
-    instructor: INSTRUCTOR_NAMES[s.instructor] ?? s.instructor,
-  }));
+  const sources = buildSources(
+    pipeline.chunks,
+    pipeline.segments,
+    pipeline.lessons,
+  );
 
   // No sources at all is the degenerate case of insufficiency: the sufficiency
   // prompt would point at a SOURCES block that isn't there.

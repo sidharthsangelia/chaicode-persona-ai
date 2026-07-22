@@ -1,3 +1,19 @@
+/**
+ * A greeting that is safe to render on the server.
+ *
+ * getGreeting() below depends on `Math.random()` and on the local hour, both of
+ * which differ between the server render and the client hydration — the server
+ * runs in UTC and picks a random line, the browser runs in the visitor's zone
+ * and picks a different one. React treats that as a hydration mismatch and
+ * throws away the server HTML. This is what gets rendered for the first paint;
+ * the personalised one swaps in on mount.
+ */
+export function getStableGreeting(personaId: string) {
+  return personaId === "hitesh"
+    ? "Haanji, batao aaj kya seekhna hai?"
+    : "Alright, what are we building today?";
+}
+
 export function getGreeting(personaId: string) {
   const hour = new Date().getHours();
 
@@ -5,21 +21,18 @@ export function getGreeting(personaId: string) {
     hour >= 5 && hour < 12
       ? "morning"
       : hour >= 12 && hour < 17
-      ? "afternoon"
-      : hour >= 17 && hour < 22
-      ? "evening"
-      : "night";
+        ? "afternoon"
+        : hour >= 17 && hour < 22
+          ? "evening"
+          : "night";
 
   const greetings =
     personaId === "hitesh"
       ? HITESH_GREETINGS[period]
       : PIYUSH_GREETINGS[period];
 
-  return greetings[
-    Math.floor(Math.random() * greetings.length)
-  ];
+  return greetings[Math.floor(Math.random() * greetings.length)];
 }
-
 
 export const HITESH_GREETINGS = {
   morning: [
@@ -74,7 +87,6 @@ export const HITESH_GREETINGS = {
     "Haanji, der ho gayi hai, jaldi batao problem kya hai.",
   ],
 };
-
 
 export const PIYUSH_GREETINGS = {
   morning: [

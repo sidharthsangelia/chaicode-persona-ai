@@ -1,3 +1,30 @@
+/**
+ * Questions that exercise the course index, shown regardless of persona.
+ *
+ * Both personas answer from the same transcripts, and without these the empty
+ * state advertises career advice only — nobody would think to ask where dynamic
+ * routes are taught, so the retrieval pipeline would sit unused behind a chat box
+ * that looks like every other chat box. Discoverability is the whole job here.
+ *
+ * The mix is deliberate: mostly COURSE questions that end in a cited timestamp,
+ * plus a couple of CATALOG ones ("what's in module 5") so the structural route
+ * gets found too.
+ */
+export const COURSE_STARTERS: string[] = [
+  "How do I read params from a dynamic route in Expo Router?",
+  "How do I store a login token securely in an Expo app?",
+  "Show me how to pick an image from the phone's gallery",
+  "What's the difference between Stack and Tabs navigation?",
+  "How do I make the phone vibrate when someone taps a button?",
+  "Where does this course cover authentication?",
+  "How do I build an APK with EAS Build?",
+  "Why would a FlatList scroll slowly, and how do I fix it?",
+  "What's covered in module 5?",
+  "How do I call an API and show the data on a screen?",
+  "How do I use AsyncStorage to save data on the device?",
+  "How do I ask for camera permissions the right way?",
+];
+
 export const STARTERS: Record<string, string[]> = {
   hitesh: [
     "I have no coding background, where do I even start in 2026?",

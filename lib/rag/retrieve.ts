@@ -6,7 +6,12 @@ import {
   LESSON_COLLECTION,
   qdrant,
 } from "./qdrant";
-import { formatTimestamp } from "./types";
+import {
+  chapterLabel,
+  formatTimestamp,
+  instructorName,
+  type LessonKind,
+} from "./types";
 
 /**
  * Hybrid retrieval: a dense leg (Qdrant, cosine over embeddings) and a keyword
@@ -410,6 +415,69 @@ export async function hybridSearch(
   return rrfFuse(lists, { weights, labels }).slice(0, limit);
 }
 
+/**
+ * Everything needed to say where a chunk lives in the course.
+ *
+ * These fields are read from Postgres at query time rather than copied into the
+ * Qdrant payload, which matters for two reasons. Renaming a module label — say,
+ * disambiguating "Module 1" from "Module 1 (Hitesh)" — becomes a one-row update
+ * instead of a full re-embed. And the two retrieval legs previously disagreed:
+ * the dense leg carried the raw folder `title` in its payload while the keyword
+ * leg selected `displayTitle`, so the same lesson was labelled differently
+ * depending on which leg found it. One source of truth ends that.
+ */
+export interface LessonRef {
+  lessonId: string;
+  moduleNum: number;
+  /** "Module 4", or "Module 1 (Hitesh)" where two folders share a number. */
+  moduleLabel: string;
+  /** "Chapter 3" / "Mini-project 1". Empty for unnumbered extras. */
+  chapterLabel: string;
+  /** Readable title, transcript-backfilled when the folder name is a placeholder. */
+  displayTitle: string;
+  /** The directory on disk, e.g. "3-Dynamic Routes_epm". */
+  folderName: string;
+  /** Display name, e.g. "Suraj Jha". */
+  instructor: string;
+}
+
+/** Loads lesson metadata for a set of chunks, in one query. */
+export async function loadLessonRefs(
+  lessonIds: string[],
+): Promise<Map<string, LessonRef>> {
+  const ids = [...new Set(lessonIds)];
+  if (ids.length === 0) return new Map();
+
+  const lessons = await prisma.courseLesson.findMany({
+    where: { id: { in: ids } },
+    select: {
+      id: true,
+      moduleNum: true,
+      moduleLabel: true,
+      displayTitle: true,
+      folderName: true,
+      instructor: true,
+      kind: true,
+      order: true,
+    },
+  });
+
+  return new Map(
+    lessons.map((l) => [
+      l.id,
+      {
+        lessonId: l.id,
+        moduleNum: l.moduleNum,
+        moduleLabel: l.moduleLabel,
+        chapterLabel: chapterLabel(l.kind as LessonKind, l.order),
+        displayTitle: l.displayTitle,
+        folderName: l.folderName,
+        instructor: instructorName(l.instructor),
+      },
+    ]),
+  );
+}
+
 export interface SegmentContext {
   segmentId: string;
   lessonId: string;
@@ -477,23 +545,30 @@ export async function getCourseOutline(): Promise<string> {
       displayTitle: true,
       durationMs: true,
       instructor: true,
+      kind: true,
+      order: true,
     },
   });
 
   const totalMs = lessons.reduce((n, l) => n + l.durationMs, 0);
   const lines: string[] = [
     `Course: Expo / React Native mobile development`,
-    `${lessons.length} lessons across ${new Set(lessons.map((l) => l.moduleNum)).size} modules, ${(totalMs / 3_600_000).toFixed(1)} hours total`,
+    `${lessons.length} lessons across ${new Set(lessons.map((l) => l.moduleLabel)).size} modules, ${(totalMs / 3_600_000).toFixed(1)} hours total`,
     "",
   ];
 
-  let currentModule = -1;
+  // Grouped by label rather than number: "Module 1" and "Module 1 (Hitesh)" are
+  // separate folders that happen to share a number.
+  let currentModule = "";
   for (const l of lessons) {
-    if (l.moduleNum !== currentModule) {
-      currentModule = l.moduleNum;
+    if (l.moduleLabel !== currentModule) {
+      currentModule = l.moduleLabel;
       lines.push(`${l.moduleLabel}:`);
     }
-    lines.push(`  - ${l.displayTitle} (${formatTimestamp(l.durationMs)})`);
+    const chapter = chapterLabel(l.kind as LessonKind, l.order);
+    lines.push(
+      `  - ${chapter ? `${chapter}: ` : ""}${l.displayTitle} (${formatTimestamp(l.durationMs)})`,
+    );
   }
 
   return lines.join("\n");

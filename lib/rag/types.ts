@@ -26,10 +26,20 @@ export interface Lesson {
   id: string;
   moduleSlug: string;
   moduleNum: number;
-  /** Display label, e.g. "Module 4". */
+  /**
+   * Display label, e.g. "Module 4". Carries the instructor when two folders
+   * share a number — "module 1" and "module 1 hc" are both module 1, so the
+   * second renders as "Module 1 (Hitesh)".
+   */
   moduleLabel: string;
   /** Human title with folder-name noise stripped, e.g. "Dynamic Routes". */
   title: string;
+  /**
+   * The lesson directory exactly as it sits on disk, e.g. "3-Dynamic Routes_epm".
+   * Shown under the citation so a learner can find the folder by eye — the
+   * prettified title alone doesn't match what the file browser lists.
+   */
+  folderName: string;
   kind: LessonKind;
   /** Number parsed from the folder name; mini-projects sort after chapters. */
   order: number;
@@ -113,6 +123,31 @@ export function formatHistory(turns: ChatTurn[], maxTurns = 6): string {
       return `${t.role === "user" ? "User" : "Assistant"}: ${text}`;
     })
     .join("\n");
+}
+
+/** Instructor slugs as they should appear to a reader, or to a model. */
+export const INSTRUCTOR_NAMES: Record<string, string> = {
+  hitesh: "Hitesh",
+  suraj: "Suraj Jha",
+};
+
+export function instructorName(slug: string): string {
+  return INSTRUCTOR_NAMES[slug] ?? slug;
+}
+
+/**
+ * The lesson's position within its module, as a learner would say it.
+ *
+ * Module 3 contains both "1. introduction to navigation" and
+ * "mini-project-1-init-project-setup", so the number alone is ambiguous — the
+ * kind has to be part of the label for "Module 3 › Chapter 1" to mean one thing.
+ * Unnumbered extras (Hitesh's two lessons) return "", and callers fall back to
+ * the title.
+ */
+export function chapterLabel(kind: LessonKind, order: number): string {
+  if (kind === "mini-project") return `Mini-project ${order}`;
+  if (kind === "chapter") return `Chapter ${order}`;
+  return "";
 }
 
 /** Folder names that carry no topic information and need a backfilled title. */

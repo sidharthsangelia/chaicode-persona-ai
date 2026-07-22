@@ -45,8 +45,15 @@ export function CourseCitations({ citations }: { citations: Citation[] }) {
             </span>
 
             <div className="min-w-0 flex-1">
+              {/* module › chapter › timestamp — the address a learner needs to
+                  find this moment in the course folder. */}
               <div className="flex items-baseline justify-between gap-3">
                 <p className="truncate text-sm font-medium leading-6">
+                  <span className="text-muted-foreground">
+                    {c.moduleLabel}
+                    <span className="mx-1.5 opacity-60">›</span>
+                  </span>
+                  {c.chapterLabel && `${c.chapterLabel}: `}
                   {c.lessonTitle}
                 </p>
                 <span className="flex shrink-0 items-center gap-1 text-xs font-medium tabular-nums text-muted-foreground">
@@ -54,9 +61,18 @@ export function CourseCitations({ citations }: { citations: Citation[] }) {
                   {c.timestamp}
                 </span>
               </div>
+
               <p className="truncate text-xs text-muted-foreground">
-                Module {c.moduleNum} · {c.instructor} · {c.segmentTitle}
+                {c.segmentTitle} · {c.instructor}
               </p>
+
+              {/* The directory verbatim. The title above is prettified, so it
+                  does not match what a file browser lists. */}
+              {c.folderName && (
+                <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground/70">
+                  {c.folderName}
+                </p>
+              )}
             </div>
           </li>
         ))}

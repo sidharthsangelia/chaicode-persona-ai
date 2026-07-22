@@ -1,4 +1,4 @@
-import type { RetrievedChunk, SegmentContext } from "./retrieve";
+import type { LessonRef, RetrievedChunk, SegmentContext } from "./retrieve";
 import { formatTimestamp } from "./types";
 
 /**
@@ -14,13 +14,27 @@ import { formatTimestamp } from "./types";
  * is merely imperfect and one that is worthless.
  */
 
-/** One citable unit: a parent segment, timed by its best-ranked chunk. */
+/**
+ * One citable unit: a parent segment, timed by its best-ranked chunk.
+ *
+ * The address is module → chapter → timestamp, because that is how a learner
+ * navigates the course folder. `folderName` carries the directory verbatim,
+ * since the prettified title drops the number prefix and the `_epm` suffix and
+ * therefore does not match what a file browser shows.
+ */
 export interface Source {
   /** 1-based number the model cites. */
   n: number;
   lessonId: string;
   moduleNum: number;
+  /** "Module 4", or "Module 1 (Hitesh)" where two folders share a number. */
+  moduleLabel: string;
+  /** "Chapter 3" / "Mini-project 1". Empty for unnumbered extras. */
+  chapterLabel: string;
   lessonTitle: string;
+  /** The lesson directory on disk, e.g. "3-Dynamic Routes_epm". */
+  folderName: string;
+  /** LLM-written topic for this specific moment, e.g. "Creating the route file". */
   segmentTitle: string;
   instructor: string;
   /**
@@ -46,7 +60,10 @@ export interface Citation {
   n: number;
   lessonId: string;
   moduleNum: number;
+  moduleLabel: string;
+  chapterLabel: string;
   lessonTitle: string;
+  folderName: string;
   segmentTitle: string;
   instructor: string;
   startMs: number;
@@ -59,7 +76,10 @@ export function toCitation(source: Source): Citation {
     n: source.n,
     lessonId: source.lessonId,
     moduleNum: source.moduleNum,
+    moduleLabel: source.moduleLabel,
+    chapterLabel: source.chapterLabel,
     lessonTitle: source.lessonTitle,
+    folderName: source.folderName,
     segmentTitle: source.segmentTitle,
     instructor: source.instructor,
     startMs: source.startMs,
@@ -80,6 +100,7 @@ export function toCitation(source: Source): Citation {
 export function buildSources(
   chunks: RetrievedChunk[],
   segments: SegmentContext[],
+  lessons: Map<string, LessonRef>,
 ): Source[] {
   const byId = new Map(segments.map((s) => [s.segmentId, s]));
   const sources: Source[] = [];
@@ -91,13 +112,20 @@ export function buildSources(
     if (!segment) continue;
 
     claimed.add(chunk.segmentId);
+    // Lesson labels come from Postgres; the chunk payload is only trusted for
+    // what is genuinely chunk-level. Falling back to the payload keeps a
+    // citation renderable if a lesson row somehow went missing.
+    const lesson = lessons.get(chunk.lessonId);
     sources.push({
       n: sources.length + 1,
       lessonId: chunk.lessonId,
-      moduleNum: chunk.moduleNum,
-      lessonTitle: chunk.lessonTitle,
+      moduleNum: lesson?.moduleNum ?? chunk.moduleNum,
+      moduleLabel: lesson?.moduleLabel ?? `Module ${chunk.moduleNum}`,
+      chapterLabel: lesson?.chapterLabel ?? "",
+      lessonTitle: lesson?.displayTitle ?? chunk.lessonTitle,
+      folderName: lesson?.folderName ?? "",
       segmentTitle: chunk.segmentTitle || segment.title,
-      instructor: chunk.instructor,
+      instructor: lesson?.instructor ?? chunk.instructor,
       startMs: chunk.startMs,
       segmentStartMs: segment.startMs,
       segmentEndMs: segment.endMs,
@@ -118,12 +146,15 @@ export function buildSources(
  */
 export function renderSources(sources: Source[]): string {
   return sources
-    .map((s) =>
-      [
-        `[${s.n}] Module ${s.moduleNum} · ${s.lessonTitle} — "${s.segmentTitle}" (taught by ${s.instructor})`,
+    .map((s) => {
+      const chapter = s.chapterLabel
+        ? `${s.chapterLabel}: ${s.lessonTitle}`
+        : s.lessonTitle;
+      return [
+        `[${s.n}] ${s.moduleLabel} › ${chapter} — "${s.segmentTitle}" (taught by ${s.instructor})`,
         s.text,
-      ].join("\n"),
-    )
+      ].join("\n");
+    })
     .join("\n\n");
 }
 

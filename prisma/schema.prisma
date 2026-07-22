@@ -55,6 +55,9 @@ model CourseLesson {
   title        String
   /// Title recovered from the transcript, used for display and citations.
   displayTitle String
+  /// The lesson directory exactly as it sits on disk, e.g. "3-Dynamic Routes_epm".
+  /// Rendered under each citation so a learner can find the folder by eye.
+  folderName   String @default("")
   kind        String
   order       Int
   courseOrder Int

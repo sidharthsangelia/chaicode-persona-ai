@@ -3,6 +3,8 @@ import {
   expandToSegments,
   getCourseOutline,
   hybridSearch,
+  type LessonRef,
+  loadLessonRefs,
   type QuerySpec,
   type RetrievedChunk,
   rrfFuse,
@@ -66,6 +68,8 @@ export interface PipelineResult {
   outline: string | null;
   chunks: RetrievedChunk[];
   segments: SegmentContext[];
+  /** Module/chapter/folder labels for the cited lessons, keyed by lesson id. */
+  lessons: Map<string, LessonRef>;
   grade: RetrievalGrade | null;
   attempts: number;
   /**
@@ -129,6 +133,7 @@ function emptyResult(
     outline,
     chunks: [],
     segments: [],
+    lessons: new Map(),
     grade: null,
     attempts: 0,
     sufficient: true,
@@ -293,8 +298,13 @@ export async function runRetrievalPipeline(
     grade.sufficient ? limit : Math.min(limit, INSUFFICIENT_LIMIT),
   );
 
-  const segments = await timed(timings, "expand", () =>
-    expandToSegments(chunks),
+  // Independent lookups against the same database, so they go together rather
+  // than costing two sequential round trips to Singapore.
+  const [segments, lessons] = await timed(timings, "expand", () =>
+    Promise.all([
+      expandToSegments(chunks),
+      loadLessonRefs(chunks.map((c) => c.lessonId)),
+    ]),
   );
 
   return {
@@ -303,6 +313,7 @@ export async function runRetrievalPipeline(
     outline: null,
     chunks,
     segments,
+    lessons,
     grade,
     attempts: timings.filter((t) => t.stage.startsWith("retrieve.")).length,
     sufficient: grade.sufficient,

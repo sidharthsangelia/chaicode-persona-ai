@@ -17,13 +17,13 @@
 import "dotenv/config";
 import type { ModelMessage } from "ai";
 import { streamAnswer } from "../lib/ai/answer";
-import { describeStage } from "../lib/rag/status";
 import { prisma } from "../lib/prisma";
 import {
   applyCitationFilter,
   createCitationFilter,
 } from "../lib/rag/citations";
 import { runRetrievalPipeline } from "../lib/rag/pipeline";
+import { describeStage } from "../lib/rag/status";
 import type { ChatTurn } from "../lib/rag/types";
 
 const argv = process.argv.slice(2);
@@ -95,9 +95,14 @@ async function main() {
   if (citations.length > 0) {
     console.log(bold("CITATIONS"));
     for (const c of citations) {
+      const chapter = c.chapterLabel
+        ? `${c.chapterLabel}: ${c.lessonTitle}`
+        : c.lessonTitle;
       console.log(
-        `  [${c.n}] ${bold(`M${c.moduleNum}`)} ${c.lessonTitle} ${bold(c.timestamp)} ${dim(`· ${c.segmentTitle} · ${c.instructor}`)}`,
+        `  [${c.n}] ${c.moduleLabel} ${dim("›")} ${bold(chapter)} ${dim("›")} ${bold(c.timestamp)}`,
       );
+      console.log(dim(`      ${c.segmentTitle} · ${c.instructor}`));
+      if (c.folderName) console.log(dim(`      ${c.folderName}`));
     }
   }
 

@@ -160,6 +160,7 @@ async function writePostgres(built: Built[]): Promise<void> {
       moduleLabel: lesson.moduleLabel,
       title: lesson.title,
       displayTitle,
+      folderName: lesson.folderName,
       kind: lesson.kind,
       order: lesson.order,
       courseOrder: lesson.courseOrder,

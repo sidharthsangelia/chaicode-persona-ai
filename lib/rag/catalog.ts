@@ -2,7 +2,12 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { durationOf, parseSubtitles } from "./parse-srt";
-import type { Cue, Lesson, LessonKind } from "./types";
+import {
+  type Cue,
+  instructorName,
+  type Lesson,
+  type LessonKind,
+} from "./types";
 
 export const SUBTITLE_ROOT = "class-subtitle";
 
@@ -143,8 +148,12 @@ export function loadCourse(root = SUBTITLE_ROOT): LessonWithCues[] {
 
     const { num, suffix } = parsedModule;
     const moduleSlug = `m${num}${suffix ? slugify(suffix) : ""}`;
-    const moduleLabel = `Module ${num}`;
     const instructor = MODULE_INSTRUCTOR[moduleFolder] ?? DEFAULT_INSTRUCTOR;
+    // A suffix means another folder already claimed this number ("module 1" and
+    // "module 1 hc"), so the label has to say which one it is.
+    const moduleLabel = suffix
+      ? `Module ${num} (${instructorName(instructor)})`
+      : `Module ${num}`;
     const modulePath = join(root, moduleFolder);
 
     for (const lessonFolder of listDirs(modulePath)) {
@@ -172,6 +181,7 @@ export function loadCourse(root = SUBTITLE_ROOT): LessonWithCues[] {
           moduleNum: num,
           moduleLabel,
           title,
+          folderName: lessonFolder,
           kind,
           order,
           instructor,
