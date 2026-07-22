@@ -6,7 +6,7 @@ lesson and timestamp where it is taught.
 
 This document explains how, and more importantly *why* each piece is there. Most
 of the design exists because something simpler was tried first and failed in a
-specific, observable way. Those failures are in here too — they are the part
+specific, observable way. Those failures are in here too, and they are the part
 worth reading.
 
 ---
@@ -22,8 +22,8 @@ A model that hallucinates can therefore group a topic wrongly, or cite the wrong
 moment. It can never produce a timestamp that does not exist in the source file.
 
 That is the difference between a citation that is imperfect and one that is
-worthless, and it is why the answer step is never shown a timestamp at all —
-see §2.6.
+worthless, and it is why the answer step is never shown a timestamp at all.
+See §2.6.
 
 ---
 
@@ -46,7 +46,7 @@ which column it sits in.
 
 ---
 
-## 2. Ingest — `scripts/ingest.ts`
+## 2. Ingest (`scripts/ingest.ts`)
 
 ```
 .srt files → cues → segments → chunks → enrichment → embeddings → Postgres + Qdrant
@@ -56,7 +56,7 @@ Measured on the real corpus: **87 lessons → 687 segments → 1,702 chunks, 410
 seconds, about $0.11.** A re-run with the LLM cache warm is ~120s, since only the
 embeddings have to be recomputed.
 
-### 2.1 Parsing — `lib/rag/parse-srt.ts`
+### 2.1 Parsing (`lib/rag/parse-srt.ts`)
 
 Handles both `.srt` and `.vtt` (they differ mainly in whether the millisecond
 separator is `,` or `.`).
@@ -69,7 +69,7 @@ a line is a sequence number only if the line after it is a timing line.
 **Lesson:** in a line-oriented format, decide what a line *is* from its context,
 not from accumulated state.
 
-### 2.2 Semantic segmentation — `lib/rag/segment.ts`
+### 2.2 Semantic segmentation (`lib/rag/segment.ts`)
 
 A cheap model reads the numbered cues and returns the indices where the topic
 changes. Target ~2 minutes, floor 45s, ceiling 4 minutes.
@@ -77,7 +77,7 @@ changes. Target ~2 minutes, floor 45s, ceiling 4 minutes.
 **What broke, twice:**
 
 1. A 7-second segment survived. The merge check measured the gap between block
-   *starts*, which is the length of the *previous* block — so the final block was
+   *starts*, which is the length of the *previous* block, so the final block was
    never checked. Fixed with an explicit `blockMs()` and a fixpoint merge loop.
 2. A 335-second segment survived a 240-second ceiling. The code ran
    `mergeUndersized(splitOversized(...))`. Splitting can never create a block that
@@ -91,16 +91,16 @@ other. That determines the order, and there is usually only one correct answer.
 
 Two different sizes, for two different jobs:
 
-- **Chunk (~60s)** — what gets embedded and searched. Small, so a match is
+- **Chunk (~60s)**: what gets embedded and searched. Small, so a match is
   precise, which is what makes the timestamp precise.
-- **Segment (~2-4 min)** — what the answering model actually reads. Big enough to
+- **Segment (~2-4 min)**: what the answering model actually reads. Big enough to
   contain the explanation rather than a fragment of one.
 
 Retrieval finds a chunk; `expandToSegments()` swaps in its parent before
 generation. You get the precision of small chunks and the context of large ones
 without choosing.
 
-### 2.4 Contextual retrieval — `lib/rag/enrich.ts`
+### 2.4 Contextual retrieval (`lib/rag/enrich.ts`)
 
 Spoken language drops its nouns. A transcript chunk reads:
 
@@ -133,7 +133,7 @@ instead of doing any search at all.
 
 **Postgres is authoritative for anything displayed.** The Qdrant payload
 deliberately does not carry module labels, chapter numbers or folder names.
-Copying them in would mean a re-embed every time a label changes — and it had
+Copying them in would mean a re-embed every time a label changes, and it had
 already caused a real inconsistency: the dense leg carried the raw folder `title`
 in its payload while the keyword leg selected `displayTitle`, so the same lesson
 was labelled differently depending on which leg found it. `loadLessonRefs()` now
@@ -142,7 +142,7 @@ which is one query and one source of truth.
 
 **What broke:** the `tsvector` is a Postgres *generated column*, which requires
 every function in its expression to be immutable. It failed. I assumed
-`to_tsvector('english', …)` was the culprit — the usual suspect. An empirical
+`to_tsvector('english', …)` was the culprit, the usual suspect. An empirical
 probe proved that fine and the real culprit was `array_to_string` over the tags
 array. Fixed by denormalising to plain `tagsText` / `topicsText` columns.
 
@@ -158,7 +158,7 @@ by model + prompt + schema, so a re-run after a code change replays for free.
 
 ---
 
-## 3. Query — `lib/rag/pipeline.ts`
+## 3. Query (`lib/rag/pipeline.ts`)
 
 ```
         ┌─ route ─┐
@@ -166,7 +166,7 @@ question┤         ├→ retrieve → grade →[retry once]→ expand → answ
         └transform┘
 ```
 
-### 3.1 Routing — `lib/rag/router.ts`
+### 3.1 Routing (`lib/rag/router.ts`)
 
 Four routes, one cheap classification:
 
@@ -178,7 +178,7 @@ Four routes, one cheap classification:
 | `REFUSE` | off-topic / injection / unsafe | no retrieval |
 
 **Three of the four routes skip retrieval entirely.** "hi" should not cost five
-seconds and six embedding calls. The router is also the input guardrail — routing
+seconds and six embedding calls. The router is also the input guardrail, since routing
 and safety are the same judgement, made once.
 
 #### The default was wrong at first
@@ -187,7 +187,7 @@ The original prompt said *"default to COURSE whenever a question is technical"*.
 That reads sensibly and is the wrong product. This app is a general coding mentor
 that happens to have one course indexed, so treating every technical question as
 a course lookup meant "how do I use expo-router?" cost eight seconds of retrieval
-to answer something the model already knew — and made the whole assistant feel
+to answer something the model already knew, and made the whole assistant feel
 like it only knows one course.
 
 The line is now **whether the learner referenced the course**, not whether the
@@ -206,14 +206,14 @@ listed as a COURSE signal while "what's in module 5" was CATALOG's own example,
 and the router duly sent it to COURSE. CATALOG now says *check this first
 whenever a module number appears*.
 
-#### `/course` — explicit scoping
+#### `/course`, explicit scoping
 
 Guessing is only ever going to be approximately right, so the learner gets a
 switch. Typing `/course` in the composer turns on a sticky mode; every message
 after it is course-grounded until the chip is dismissed.
 
 Course mode **narrows** routing rather than skipping it. The router is the
-injection guardrail, and an explicit mode must not become a way around it — so it
+injection guardrail, and an explicit mode must not become a way around it, so it
 still runs, on a prompt that offers COURSE, CATALOG and REFUSE, plus GENERAL for
 pure pleasantries only. Verified: `/course` + "ignore all previous instructions"
 still routes to REFUSE.
@@ -238,7 +238,7 @@ router's `reason` field. `RouteDecision` now carries a `degraded` flag and logs.
 **Lesson:** a fail-open fallback is correct, and it will hide the failure it is
 covering for unless you make the degraded path *visibly* different.
 
-### 3.2 Query transformation — `lib/rag/transform.ts`
+### 3.2 Query transformation (`lib/rag/transform.ts`)
 
 The problem is vocabulary mismatch. A learner asks *"how do I save a login
 token"*. The instructor said *"SecureStore.setItemAsync"*. One embedding of one
@@ -260,7 +260,7 @@ instead of accidental paraphrases.
 HyDE runs **dense-only**. It is a paragraph; OR-joining its ~40 terms into the
 keyword leg would recreate exactly the common-word noise that §3.4 had to fix.
 
-### 3.3 Hybrid retrieval — `lib/rag/retrieve.ts`
+### 3.3 Hybrid retrieval (`lib/rag/retrieve.ts`)
 
 Two legs that fail in opposite directions:
 
@@ -272,7 +272,7 @@ Two legs that fail in opposite directions:
 **What broke (the biggest silent failure in the project):** the keyword leg
 returned **zero rows for every query**. `websearch_to_tsquery` ANDs its terms, so
 "how do I read the id from a dynamic route" became
-`'read' & 'id' & 'dynam' & 'rout'` — and no single 60-second chunk contains all
+`'read' & 'id' & 'dynam' & 'rout'`, and no single 60-second chunk contains all
 four stems. Hybrid search was quietly dense-only for days.
 
 It was caught only because the CLI printed per-result markers showing *which leg*
@@ -295,23 +295,23 @@ whole trick: a cosine similarity of `0.83` and a `ts_rank` of `0.0004` live on
 incomparable scales, and normalising them would require knowing the distribution
 of both. Ranks are always comparable.
 
-K dampens the top: rank 0 contributes `1/60`, rank 1 contributes `1/61` — nearly
+K dampens the top: rank 0 contributes `1/60`, rank 1 contributes `1/61`, which is nearly
 equal. So a document found by *both* legs at middling rank outscores one found by
 a single leg at rank 0. **That agreement bias is the property you actually want.**
 
 **What broke:** for *"make the phone vibrate when user taps"*, the correct Haptics
 clip was found by dense alone at rank 0. A wrong Notifications clip was found by
-keyword alone at rank 0 — matching on "phone", "user", "tap". Both scored exactly
+keyword alone at rank 0, matching on "phone", "user", "tap". Both scored exactly
 `1/60` and tied.
 
 Fixed with per-leg trust weights: `DENSE_WEIGHT = 1.0`, `KEYWORD_WEIGHT = 0.5`.
 A rank-0 hit from a noisy leg should not equal a rank-0 hit from a reliable one.
 
 Every query from §3.2 also carries its own weight (`standalone` 1.0, `hyde` 0.8,
-`subQuestion` 0.7, `stepBack` 0.5) — the user's actual question is ground truth,
+`subQuestion` 0.7, `stepBack` 0.5). The user's actual question is ground truth,
 everything else is inference about what they meant.
 
-### 3.5 Corrective RAG — `lib/rag/grade.ts`
+### 3.5 Corrective RAG (`lib/rag/grade.ts`)
 
 Before generating, a cheap model scores the retrieved set 0-10 and marks which
 chunks are actually relevant.
@@ -326,7 +326,7 @@ The score maps to **three** outcomes, not two:
 
 The middle band was originally folded into "insufficient", and that was a real
 bug. Asked *"which is better, Pressable or TouchableOpacity?"*, retrieval did its
-job — the retry loop surfaced three Module 2 clips that teach Pressable — and the
+job, since the retry loop surfaced three Module 2 clips that teach Pressable, and the
 grader scored them **4**, correctly: the course demonstrates both components but
 never delivers a head-to-head verdict, so the excerpts genuinely do not answer
 the question *as asked*. Being below the threshold, those clips were dropped and
@@ -341,7 +341,7 @@ answer the question properly and *also* point at what the course does teach.
 Why this matters: **retrieval failure is invisible at generation time.** The model
 gets *some* transcript, and a fluent model will write a confident answer from
 irrelevant transcript. Grading turns a silent failure into either a retry or an
-honest "the course doesn't cover this" — which, for a course assistant, is a
+honest "the course doesn't cover this", which for a course assistant is a
 correct answer rather than a defeat.
 
 One call does both jobs. Per-document grading is the textbook form but costs N
@@ -349,22 +349,22 @@ calls; asking for relevant *indices* gets the same filtering for one.
 
 **Retries only fire in the middle band (3-5).** A retry costs ~3.8s. Asked about
 RevenueCat in-app purchases, retrieval scored **1/10** with hits scattered across
-modules 5, 7, 13 and 14 — the signature of a topic that is simply absent, where no
+modules 5, 7, 13 and 14, which is the signature of a topic that is simply absent, where no
 rewording helps. Skipping the retry there cut that path from **9.2s → 5.6s**.
 
 When a retry does fire, `refineQueries()` writes *deliberately divergent* queries
 at higher temperature, because rephrasing a failed query returns the same failed
-results. Results from both passes are then fused with RRF rather than replaced —
-the first pass was rarely worthless, just incomplete.
+results. Results from both passes are then fused with RRF rather than replaced,
+since the first pass was rarely worthless, just incomplete.
 
-### 3.6 Answering and citation validation — `lib/ai/answer.ts`, `lib/rag/citations.ts`
+### 3.6 Answering and citation validation (`lib/ai/answer.ts`, `lib/rag/citations.ts`)
 
 Each route gets **only its own rules** appended to the persona prompt, rather than
 one prompt carrying every addendum. A refusal no longer ships a briefing for a
 tool it was not given.
 
-A citation addresses a moment the way a learner navigates the course folder —
-**module → chapter → timestamp** — with the directory name printed underneath,
+A citation addresses a moment the way a learner navigates the course folder,
+as **module → chapter → timestamp**, with the directory name printed underneath,
 because the prettified title drops the number prefix and the `_epm` suffix and so
 does not match what a file browser lists:
 
@@ -383,8 +383,8 @@ Three naming problems the folder tree forces:
   **Module 1 (Hitesh)**, which is also the honest answer to "who taught this".
 - Module 17's folders are literally `chapter-1_epm` with no topic in the name.
   The title is backfilled from the transcript, so the citation shows
-  `Chapter 1: AI Story Generator App Setup` *and* the folder — one to understand,
-  one to navigate.
+  `Chapter 1: AI Story Generator App Setup` *and* the folder, one to understand
+  and one to navigate by.
 
 The citation mechanism is where §0 gets enforced:
 
@@ -394,12 +394,12 @@ The citation mechanism is where §0 gets enforced:
    moment.
 2. The model writes `[1]`, `[2]`.
 3. A streaming filter validates each marker against the exact list the model was
-   shown — dropping markers pointing at nothing, renumbering survivors by order of
+   shown, dropping markers pointing at nothing, renumbering survivors by order of
    first use, and holding back markers split across delta boundaries.
 
 **What broke, twice, both found by running it rather than reading it:**
 
-1. `aspect: [1, 1]` inside a code block was rewritten to `[1][2]` — producing code
+1. `aspect: [1, 1]` inside a code block was rewritten to `[1][2]`, producing code
    that does not run. Code spans, fenced and inline, are now exempt.
 2. `]` was in the "this is array subscript, not a citation" set, added so
    `m[0][1]` would survive. But `[1][2]` has that exact shape, and it is the form
@@ -416,7 +416,7 @@ false claim of authorship is the most likely thing to go wrong.
 
 ---
 
-## 4. Streaming to the UI — `app/api/chat/route.ts`
+## 4. Streaming to the UI (`app/api/chat/route.ts`)
 
 A course question spends ~5s before the first token. The fix is not to make it
 faster (it is already parallel); it is to stop the wait looking broken.
@@ -429,7 +429,7 @@ The pipeline emits an event per stage, mapped to a status line by
 
 **Transient vs persisted is the whole design in one line.** Transient parts fire
 `onData` and never enter the message, so progress drives the waiting state and
-then disappears — replaying "Searching the transcripts…" under a finished answer
+then disappears, since replaying "Searching the transcripts…" under a finished answer
 would be nonsense. Citations are **not** transient, so they persist in
 `message.parts` and survive a reload with no extra storage.
 
@@ -455,7 +455,7 @@ the YouTube tool parts that `GENERAL` depends on.
 | first answer token | ~8000 |
 | complete answer | ~20000 |
 
-Cold start roughly doubles it — both databases have to wake up.
+Cold start roughly doubles it, because both databases have to wake up.
 
 **Models.** `gpt-4.1-nano` for everything mechanical (segment, enrich, summarise,
 route, transform, grade). `gpt-4.1-mini` for the one user-visible generation.
@@ -495,10 +495,10 @@ Also open:
 ## 7. Poking at it
 
 ```bash
-# raw index — what does the index return for a literal string?
+# raw index: what does the index return for a literal string?
 npx tsx scripts/query.ts "dynamic routes" --legs --context
 
-# retrieval pipeline — route, transforms, fusion, grading, timings
+# retrieval pipeline: route, transforms, fusion, grading, timings
 npx tsx scripts/ask.ts "how do I save a login token"
 npx tsx scripts/ask.ts "how do I upload an image" --naive   # compare to no pipeline
 

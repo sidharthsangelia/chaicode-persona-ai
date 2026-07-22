@@ -86,11 +86,8 @@ export function ChatEmptyState({
               </>
             ) : (
               <>
-                {
-                  "Ask me anything about mobile development. For the Expo & React Native course specifically, type "
-                }
+                {"Ask about mobile dev Expo & React Native course by typing "}
                 <span className="font-mono text-foreground">/course</span>
-                {" and I'll point you to the exact lesson and timestamp."}
               </>
             )}
           </p>
