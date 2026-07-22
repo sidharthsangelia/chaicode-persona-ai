@@ -19,8 +19,16 @@ function shuffle<T>(array: T[]): T[] {
  * communicate, since nobody guesses that a chat box knows where dynamic routes
  * are taught.
  */
-function pickSuggestions(personaId: string, random: boolean): string[] {
+function pickSuggestions(
+  personaId: string,
+  courseMode: boolean,
+  random: boolean,
+): string[] {
   const course = random ? shuffle(COURSE_STARTERS) : COURSE_STARTERS;
+  // Course mode means every answer is course-grounded, so a career question
+  // here would just be a slower way to get the same general answer.
+  if (courseMode) return course.slice(0, 4);
+
   const persona = STARTERS[personaId] ?? [];
   const mixed = [
     ...course.slice(0, 2),
@@ -31,9 +39,11 @@ function pickSuggestions(personaId: string, random: boolean): string[] {
 
 export function ChatEmptyState({
   persona,
+  courseMode,
   onSuggestionClick,
 }: {
   persona: PersonaMeta;
+  courseMode: boolean;
   onSuggestionClick: (text: string) => void;
 }) {
   // The first paint is deterministic so it matches what the server sent; the
@@ -42,15 +52,15 @@ export function ChatEmptyState({
   // hydration mismatch by discarding the server HTML for this whole subtree.
   const [content, setContent] = useState(() => ({
     greeting: getStableGreeting(persona.id),
-    suggestions: pickSuggestions(persona.id, false),
+    suggestions: pickSuggestions(persona.id, courseMode, false),
   }));
 
   useEffect(() => {
     setContent({
       greeting: getGreeting(persona.id),
-      suggestions: pickSuggestions(persona.id, true),
+      suggestions: pickSuggestions(persona.id, courseMode, true),
     });
-  }, [persona.id]);
+  }, [persona.id, courseMode]);
 
   const { greeting, suggestions } = content;
 
@@ -69,9 +79,20 @@ export function ChatEmptyState({
           </h1>
 
           <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-            Ask me anything about the Expo &amp; React Native course and
-            I&apos;ll explain it, then point you to the exact lesson and
-            timestamp.
+            {courseMode ? (
+              <>
+                Course mode is on. Every answer comes from the Expo &amp; React
+                Native course, with the lesson and timestamp to jump to.
+              </>
+            ) : (
+              <>
+                {
+                  "Ask me anything about mobile development. For the Expo & React Native course specifically, type "
+                }
+                <span className="font-mono text-foreground">/course</span>
+                {" and I'll point you to the exact lesson and timestamp."}
+              </>
+            )}
           </p>
         </div>
 

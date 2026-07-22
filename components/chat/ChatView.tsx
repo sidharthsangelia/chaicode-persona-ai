@@ -48,6 +48,11 @@ export function ChatView({
   // wait, not the answer — so the latest one is held here instead.
   const [ragStatus, setRagStatus] = useState<RagStatus | null>(null);
 
+  // Sticky until dismissed, and deliberately not persisted: it scopes what the
+  // learner is asking right now, so reloading into a mode they set yesterday
+  // would silently change what their next question means.
+  const [courseMode, setCourseMode] = useState(false);
+
   const { messages, sendMessage, status, setMessages, regenerate } =
     useChat<ChatMessage>({
       id: chatId ?? pendingChatId,
@@ -150,11 +155,20 @@ export function ChatView({
     router,
   ]);
 
-  function handleSend(text: string) {
+  function handleSend(text: string, courseModeOverride?: boolean) {
     if (guestLimitReached) return;
     sendMessage(
       { text },
-      { body: { personaId, chatId: chatId ?? pendingChatId } },
+      {
+        body: {
+          personaId,
+          chatId: chatId ?? pendingChatId,
+          // The override carries the mode for "/course <question>", where the
+          // composer turned it on in this same tick and `courseMode` below is
+          // still the pre-render value.
+          courseMode: courseModeOverride ?? courseMode,
+        },
+      },
     );
   }
 
@@ -198,6 +212,7 @@ export function ChatView({
         persona={persona}
         isStreaming={isStreaming}
         ragStatus={ragStatus}
+        courseMode={courseMode}
         chatId={chatId}
         onSuggestionClick={handleSend}
         onEditMessage={handleEditMessage}
@@ -211,6 +226,8 @@ export function ChatView({
             onSend={handleSend}
             isStreaming={isStreaming}
             placeholder={`Message ${persona.shortName}...`}
+            courseMode={courseMode}
+            onCourseModeChange={setCourseMode}
           />
         )}
       </div>

@@ -28,8 +28,11 @@ import type { ChatTurn } from "./types";
  *   transform ─┘
  *
  * Route and transform run concurrently because transform never reads the route.
- * That costs a wasted transform on non-COURSE questions — about $0.0001 — and
- * saves ~1.4s on every course question, roughly a quarter of total latency.
+ * That costs a wasted transform whenever the route turns out not to be COURSE —
+ * now the common case, since ordinary technical questions are answered from the
+ * model's own knowledge unless the learner asked for the course. It stays worth
+ * it: the transform runs in parallel so it adds no latency to the routes that
+ * discard it, and it saves ~1.4s on every question that does hit retrieval.
  */
 
 export interface StageTiming {
@@ -53,6 +56,13 @@ export type PipelineEvent =
 
 export interface PipelineOptions {
   history?: ChatTurn[];
+  /**
+   * The learner turned course mode on with /course, so every answer should be
+   * grounded in the transcripts. Narrows routing rather than skipping it — the
+   * router is also the injection guardrail, and an explicit mode must not become
+   * a way around it.
+   */
+  courseMode?: boolean;
   /** Chunks handed to the answer step. */
   limit?: number;
   /** Total retrieval attempts. 2 means one corrective retry. */
@@ -148,6 +158,7 @@ export async function runRetrievalPipeline(
 ): Promise<PipelineResult> {
   const {
     history = [],
+    courseMode = false,
     limit = DEFAULTS.limit,
     maxAttempts = DEFAULTS.maxAttempts,
     signal,
@@ -166,7 +177,7 @@ export async function runRetrievalPipeline(
   transformPromise.catch(() => {});
 
   const route = await timed(timings, "route", () =>
-    routeQuery(question, history, signal),
+    routeQuery(question, { history, courseMode, signal }),
   );
 
   onEvent?.({ type: "routed", route });

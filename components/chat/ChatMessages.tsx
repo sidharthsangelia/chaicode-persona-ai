@@ -28,6 +28,7 @@ interface ChatMessagesProps {
   isStreaming: boolean;
   /** Latest retrieval-pipeline stage, or null when nothing is in flight. */
   ragStatus: RagStatus | null;
+  courseMode: boolean;
   chatId?: string;
   onSuggestionClick: (text: string) => void;
   onEditMessage: (messageId: string, newText: string) => void;
@@ -77,6 +78,7 @@ export function ChatMessages({
   persona,
   isStreaming,
   ragStatus,
+  courseMode,
   chatId,
   onSuggestionClick,
   onEditMessage,
@@ -84,7 +86,11 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   if (messages.length === 0) {
     return (
-      <ChatEmptyState persona={persona} onSuggestionClick={onSuggestionClick} />
+      <ChatEmptyState
+        persona={persona}
+        courseMode={courseMode}
+        onSuggestionClick={onSuggestionClick}
+      />
     );
   }
 

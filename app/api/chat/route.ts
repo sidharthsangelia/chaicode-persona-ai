@@ -39,8 +39,14 @@ export async function POST(req: Request) {
     messages,
     personaId,
     chatId,
-  }: { messages: ChatMessage[]; personaId?: string; chatId?: string } =
-    await req.json();
+    courseMode,
+  }: {
+    messages: ChatMessage[];
+    personaId?: string;
+    chatId?: string;
+    /** Set by the /course toggle in the composer. */
+    courseMode?: boolean;
+  } = await req.json();
 
   if (!userId) {
     if (countUserMessages(messages) > GUEST_MESSAGE_LIMIT) {
@@ -88,6 +94,7 @@ export async function POST(req: Request) {
 
       const pipeline = await runRetrievalPipeline(question, {
         history,
+        courseMode: courseMode === true,
         signal: req.signal,
         onEvent: (event) => {
           const status = describeStage(event);

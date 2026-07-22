@@ -6,23 +6,29 @@
  * routes are taught, so the retrieval pipeline would sit unused behind a chat box
  * that looks like every other chat box. Discoverability is the whole job here.
  *
+ * Every one names the course explicitly ("where does the course...", "which
+ * lesson..."), which is not just phrasing: the router only opens the transcript
+ * index when the learner points at it, so a starter worded as a plain technical
+ * question would get a general answer and quietly fail to demonstrate the
+ * feature it exists to advertise. They double as a lesson in how to ask.
+ *
  * The mix is deliberate: mostly COURSE questions that end in a cited timestamp,
  * plus a couple of CATALOG ones ("what's in module 5") so the structural route
  * gets found too.
  */
 export const COURSE_STARTERS: string[] = [
-  "How do I read params from a dynamic route in Expo Router?",
-  "How do I store a login token securely in an Expo app?",
-  "Show me how to pick an image from the phone's gallery",
-  "What's the difference between Stack and Tabs navigation?",
-  "How do I make the phone vibrate when someone taps a button?",
-  "Where does this course cover authentication?",
-  "How do I build an APK with EAS Build?",
-  "Why would a FlatList scroll slowly, and how do I fix it?",
+  "Where does the course cover dynamic route params?",
+  "Which lesson shows how to store a login token securely?",
+  "Where does he pick an image from the phone's gallery?",
+  "Where does the course explain Stack vs Tabs navigation?",
+  "Which lesson covers haptics and vibration?",
+  "Where is authentication covered in the course?",
+  "Which module shows how to build an APK with EAS Build?",
+  "Where does he explain FlatList performance?",
   "What's covered in module 5?",
-  "How do I call an API and show the data on a screen?",
-  "How do I use AsyncStorage to save data on the device?",
-  "How do I ask for camera permissions the right way?",
+  "Where does the course cover calling an API?",
+  "Which lesson uses AsyncStorage to save data on the device?",
+  "Where does the course ask for camera permissions?",
 ];
 
 export const STARTERS: Record<string, string[]> = {
