@@ -1,5 +1,6 @@
 "use client";
 
+import { Streamdown } from "streamdown";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   MessageScroller,
@@ -9,22 +10,24 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
-import type { UIMessage } from "ai";
-import type { PersonaMeta } from "@/lib/personas";
-import { ChatEmptyState } from "./ChatEmptyState";
-
-import { Streamdown } from "streamdown";
-import { cn } from "@/lib/utils";
 import type { YouTubeResult } from "@/lib/ai/tools/youtube";
+import type { ChatMessage } from "@/lib/chat/messages";
+import type { RagStatus } from "@/lib/rag/status";
+import type { PersonaMeta } from "@/lib/personas";
+import { cn } from "@/lib/utils";
+import { ChatEmptyState } from "./ChatEmptyState";
+import { CourseCitations } from "./CourseCitations";
 import { MessageActions } from "./MessageAction";
+import { UserMessage } from "./UserMessage";
 import { YouTubeResults } from "./YoutubeResults";
 import { YouTubeResultsSkeleton } from "./YoutubeResultsSkeleton";
-import { UserMessage } from "./UserMessage";
 
 interface ChatMessagesProps {
-  messages: UIMessage[];
+  messages: ChatMessage[];
   persona: PersonaMeta;
   isStreaming: boolean;
+  /** Latest retrieval-pipeline stage, or null when nothing is in flight. */
+  ragStatus: RagStatus | null;
   chatId?: string;
   onSuggestionClick: (text: string) => void;
   onEditMessage: (messageId: string, newText: string) => void;
@@ -33,13 +36,38 @@ interface ChatMessagesProps {
 
 const PENDING_ID = "__pending-assistant__";
 
-function TypingIndicator({ label }: { label: string }) {
+/**
+ * The wait before the first token.
+ *
+ * On a course question that wait is around five seconds of routing, searching
+ * and grading, which is long enough that bare dots read as a hang. The pipeline
+ * streams what it is actually doing, so the dots get a caption.
+ */
+function TypingIndicator({
+  label,
+  status,
+}: {
+  label: string;
+  status: RagStatus | null;
+}) {
   return (
-    <div className="flex h-6 items-center gap-1" role="status">
-      <span className="sr-only">{label}</span>
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.3s]" />
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.15s]" />
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" />
+    <div className="flex h-6 items-center gap-2" role="status">
+      <span className="sr-only">{status?.label ?? label}</span>
+      <div className="flex items-center gap-1" aria-hidden>
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.3s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.15s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" />
+      </div>
+      {status && (
+        <span
+          // Keyed by label so each new stage fades in rather than swapping text.
+          key={status.label}
+          className="animate-in fade-in text-xs text-muted-foreground duration-300"
+          aria-hidden
+        >
+          {status.label}
+        </span>
+      )}
     </div>
   );
 }
@@ -48,6 +76,7 @@ export function ChatMessages({
   messages,
   persona,
   isStreaming,
+  ragStatus,
   chatId,
   onSuggestionClick,
   onEditMessage,
@@ -66,11 +95,8 @@ export function ChatMessages({
   // The placeholder lives in the same slot the real assistant message will
   // occupy, so the dots -> text transition happens inside one continuous
   // bubble instead of swapping DOM nodes.
-  const displayMessages = needsPendingPlaceholder
-    ? [
-        ...messages,
-        { id: PENDING_ID, role: "assistant", parts: [] } as UIMessage,
-      ]
+  const displayMessages: ChatMessage[] = needsPendingPlaceholder
+    ? [...messages, { id: PENDING_ID, role: "assistant", parts: [] }]
     : messages;
 
   const lastAssistantId = [...displayMessages]
@@ -168,6 +194,7 @@ export function ChatMessages({
                       {showDots ? (
                         <TypingIndicator
                           label={`${persona.shortName} is typing`}
+                          status={ragStatus}
                         />
                       ) : (
                         <div
@@ -192,12 +219,27 @@ export function ChatMessages({
 
                       {!isPending &&
                         message.parts.map((part, i) => {
+                          // Citations arrive after the text that references
+                          // them, so they render below it by construction.
+                          if (part.type === "data-citations") {
+                            return (
+                              <CourseCitations
+                                key={`${message.id}-cite-${i}`}
+                                citations={part.data}
+                              />
+                            );
+                          }
+
                           if (part.type !== "tool-searchYouTube") return null;
                           if (
                             part.state === "input-streaming" ||
                             part.state === "input-available"
                           ) {
-                            return <YouTubeResultsSkeleton key={i} />;
+                            return (
+                              <YouTubeResultsSkeleton
+                                key={`${message.id}-yt-${i}`}
+                              />
+                            );
                           }
                           if (part.state === "output-available") {
                             const output = part.output as {
@@ -207,7 +249,7 @@ export function ChatMessages({
                             if (output.error) return null;
                             return (
                               <YouTubeResults
-                                key={i}
+                                key={`${message.id}-yt-${i}`}
                                 results={output.results ?? []}
                               />
                             );

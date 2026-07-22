@@ -1,13 +1,13 @@
 "use client";
 
-import type { UIMessage } from "ai";
+import type { ChatMessage } from "./messages";
 
 const KEY = "afterclass:guest-chat";
 
 interface GuestDraft {
   pendingChatId: string;
   personaId: string;
-  messages: UIMessage[];
+  messages: ChatMessage[];
 }
 
 export function saveGuestDraft(draft: GuestDraft) {

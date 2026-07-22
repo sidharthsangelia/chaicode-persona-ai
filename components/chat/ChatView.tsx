@@ -1,27 +1,28 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { useUser } from "@clerk/nextjs";
-import { getPersonaMeta, DEFAULT_PERSONA_ID } from "@/lib/personas";
-import { GUEST_MESSAGE_LIMIT } from "@/lib/chat/guestLimit";
-import { ChatHeader } from "./ChatHeader";
-import { ChatMessages } from "./ChatMessages";
-import { ChatComposer } from "./ChatComposer";
-import { GuestLimitBanner } from "./GuestLimitBanner";
-import type { UIMessage } from "ai";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { importGuestChatAction } from "@/actions/chatActions";
 import { useActiveChat } from "@/lib/chat/activeChatContext";
 import {
   clearGuestDraft,
   loadGuestDraft,
   saveGuestDraft,
 } from "@/lib/chat/guestDraft";
-import { importGuestChatAction } from "@/actions/chatActions";
+import { GUEST_MESSAGE_LIMIT } from "@/lib/chat/guestLimit";
+import type { ChatMessage } from "@/lib/chat/messages";
+import type { RagStatus } from "@/lib/rag/status";
+import { DEFAULT_PERSONA_ID, getPersonaMeta } from "@/lib/personas";
+import { ChatComposer } from "./ChatComposer";
+import { ChatHeader } from "./ChatHeader";
+import { ChatMessages } from "./ChatMessages";
+import { GuestLimitBanner } from "./GuestLimitBanner";
 
 interface ChatViewProps {
   chatId?: string;
-  initialMessages?: UIMessage[];
+  initialMessages?: ChatMessage[];
   initialPersonaId?: string;
 }
 
@@ -42,16 +43,27 @@ export function ChatView({
   const [pendingChatId] = useState(() => chatId ?? crypto.randomUUID());
   const [hasStartedChat, setHasStartedChat] = useState(Boolean(chatId));
 
-  const { messages, sendMessage, status, setMessages, regenerate } = useChat({
-    id: chatId ?? pendingChatId,
-    messages: initialMessages,
-    onFinish: () => {
-      if (isLoaded && isSignedIn && !chatId) {
-        router.replace(`/chat/${pendingChatId}`, { scroll: false });
-        setHasStartedChat(true);
-      }
-    },
-  });
+  // What the retrieval pipeline is doing right now. It arrives as transient
+  // data parts, which by design never land in `messages` — they describe the
+  // wait, not the answer — so the latest one is held here instead.
+  const [ragStatus, setRagStatus] = useState<RagStatus | null>(null);
+
+  const { messages, sendMessage, status, setMessages, regenerate } =
+    useChat<ChatMessage>({
+      id: chatId ?? pendingChatId,
+      messages: initialMessages,
+      onData: (part) => {
+        if (part.type === "data-status") setRagStatus(part.data);
+      },
+      onFinish: () => {
+        setRagStatus(null);
+        if (isLoaded && isSignedIn && !chatId) {
+          router.replace(`/chat/${pendingChatId}`, { scroll: false });
+          setHasStartedChat(true);
+        }
+      },
+      onError: () => setRagStatus(null),
+    });
 
   const isStreaming = status === "streaming" || status === "submitted";
 
@@ -185,6 +197,7 @@ export function ChatView({
         messages={messages}
         persona={persona}
         isStreaming={isStreaming}
+        ragStatus={ragStatus}
         chatId={chatId}
         onSuggestionClick={handleSend}
         onEditMessage={handleEditMessage}

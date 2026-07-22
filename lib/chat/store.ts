@@ -1,25 +1,53 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import type { UIMessage } from "ai";
+import type { ChatMessage } from "./messages";
 
 export async function ensureUser(userId: string) {
-  await prisma.user.upsert({ where: { id: userId }, create: { id: userId }, update: {} });
+  await prisma.user.upsert({
+    where: { id: userId },
+    create: { id: userId },
+    update: {},
+  });
 }
 
 export async function ensureChat({
-  chatId, userId, personaId, firstUserText,
-}: { chatId: string; userId: string; personaId: string; firstUserText: string }) {
+  chatId,
+  userId,
+  personaId,
+  firstUserText,
+}: {
+  chatId: string;
+  userId: string;
+  personaId: string;
+  firstUserText: string;
+}) {
   const existing = await prisma.chat.findUnique({ where: { id: chatId } });
   if (existing) return existing;
-  return prisma.chat.create({ data: { id: chatId, userId, personaId, title: firstUserText.slice(0, 60) } });
+  return prisma.chat.create({
+    data: { id: chatId, userId, personaId, title: firstUserText.slice(0, 60) },
+  });
 }
 
-export async function saveTurn({ chatId, messages }: { chatId: string; messages: UIMessage[] }) {
+export async function saveTurn({
+  chatId,
+  messages,
+}: {
+  chatId: string;
+  messages: ChatMessage[];
+}) {
   await prisma.message.createMany({
-    data: messages.map((m) => ({ id: m.id, chatId, role: m.role, parts: m.parts as object })),
+    data: messages.map((m) => ({
+      id: m.id,
+      chatId,
+      role: m.role,
+      parts: m.parts as object,
+    })),
     skipDuplicates: true,
   });
-  await prisma.chat.update({ where: { id: chatId }, data: { updatedAt: new Date() } });
+  await prisma.chat.update({
+    where: { id: chatId },
+    data: { updatedAt: new Date() },
+  });
 }
 
 export async function getChat(chatId: string, userId: string) {
@@ -31,11 +59,11 @@ export async function getChat(chatId: string, userId: string) {
   return {
     id: chat.id,
     personaId: chat.personaId,
-messages: chat.messages.map((m: (typeof chat.messages)[number]) => ({
-  id: m.id,
-  role: m.role as "user" | "assistant",
-  parts: m.parts as UIMessage["parts"],
-})),
+    messages: chat.messages.map((m: (typeof chat.messages)[number]) => ({
+      id: m.id,
+      role: m.role as "user" | "assistant",
+      parts: m.parts as ChatMessage["parts"],
+    })),
   };
 }
 
