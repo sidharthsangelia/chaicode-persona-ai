@@ -31,6 +31,17 @@ export const MODELS = {
   transform: "gpt-4.1-nano",
   /** Corrective grading of the retrieved set, plus the retry query refinement. */
   grade: "gpt-4.1-nano",
+  /**
+   * The only user-visible generation, so the only place worth spending on.
+   *
+   * A tier up from the nano models because this task is not classification: it
+   * has to hold a persona voice, explain a concept from messy spoken transcript,
+   * and place citation markers accurately — and a misplaced marker sends the
+   * learner to the wrong minute of the wrong lesson, which is worse than no
+   * citation at all. Citation discipline is instruction-following, which is
+   * exactly what the mini tier buys over nano.
+   */
+  answer: "gpt-4.1-mini",
 } as const;
 
 const CACHE_DIR = ".rag-cache";
