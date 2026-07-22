@@ -18,8 +18,36 @@ import { formatTimestamp } from "./types";
  * costs N calls; asking for indices gets the same filtering for one.
  */
 
-/** Below this, the retrieved set is not good enough to answer from. */
+/** At or above this, the retrieved set can answer the question outright. */
 export const SUFFICIENCY_THRESHOLD = 6;
+
+/**
+ * At or above this, the set is on the right topic even though it does not fully
+ * answer — and is still worth citing.
+ *
+ * Treating sufficiency as a single boolean threw away good citations. Asked
+ * "which is better, Pressable or TouchableOpacity", retrieval correctly surfaced
+ * three clips from Module 2 that teach Pressable, and the grader scored them 4:
+ * the course demonstrates both components but never delivers a head-to-head
+ * verdict, so the excerpts genuinely do not answer the question as asked. Below
+ * the threshold, those clips were dropped and the learner got a general answer
+ * with no timestamps — despite the course covering the topic at 9:23.
+ *
+ * 4-5 is exactly the band the grading rubric calls "the right topic area, but the
+ * specific thing asked is not shown". The right response there is to answer from
+ * the mentor's own knowledge AND point at what the course does teach, not to
+ * pretend the course has nothing.
+ */
+export const RELEVANCE_THRESHOLD = 4;
+
+/**
+ * How well the retrieved set covers the question.
+ *
+ *   full     answer from the excerpts and cite them
+ *   partial  right topic, incomplete answer — explain it, still cite
+ *   none     nothing usable; say so
+ */
+export type Coverage = "full" | "partial" | "none";
 
 export interface RetrievalGrade {
   /** 0-10: how well the retrieved set covers the question. */
@@ -29,9 +57,14 @@ export interface RetrievalGrade {
   missing: string;
   /** Indices into the graded array that are genuinely relevant. */
   relevantIndices: number[];
-  sufficient: boolean;
+  coverage: Coverage;
   /** True when grading failed and the score was assumed rather than judged. */
   degraded?: boolean;
+}
+
+function coverageOf(score: number): Coverage {
+  if (score >= SUFFICIENCY_THRESHOLD) return "full";
+  return score >= RELEVANCE_THRESHOLD ? "partial" : "none";
 }
 
 const gradeSchema = z.object({
@@ -93,7 +126,7 @@ export async function gradeRetrieval(
       reasoning: "no results retrieved",
       missing: question,
       relevantIndices: [],
-      sufficient: false,
+      coverage: "none",
     };
   }
 
@@ -122,7 +155,12 @@ ${chunks.map(renderForGrading).join("\n\n")}`,
       reasoning: result.reasoning,
       missing: result.missing.trim(),
       relevantIndices,
-      sufficient: result.score >= SUFFICIENCY_THRESHOLD,
+      // A score in the partial band with nothing marked relevant is really a
+      // miss: the grader looked and could not point at anything.
+      coverage:
+        relevantIndices.length === 0 && result.score < SUFFICIENCY_THRESHOLD
+          ? "none"
+          : coverageOf(result.score),
     };
   } catch (error) {
     if (signal?.aborted) throw error;
@@ -134,7 +172,7 @@ ${chunks.map(renderForGrading).join("\n\n")}`,
       reasoning: "grader unavailable",
       missing: "",
       relevantIndices: chunks.map((_, i) => i),
-      sufficient: true,
+      coverage: "full",
       degraded: true,
     };
   }

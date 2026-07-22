@@ -61,8 +61,10 @@ export function describeStage(event: PipelineEvent): RagStatus | null {
       return { stage: "retrying", label: "Not quite right, looking again…" };
 
     case "graded":
-      return event.sufficient
-        ? { stage: "writing", label: "Putting it together…" }
-        : null;
+      // A miss says nothing here: either a retry follows and speaks for itself,
+      // or the answer starts and explains the gap in the persona's own words.
+      return event.coverage === "none"
+        ? null
+        : { stage: "writing", label: "Putting it together…" };
   }
 }

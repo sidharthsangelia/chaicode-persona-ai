@@ -12,6 +12,7 @@
  *   npx tsx scripts/ask.ts "how do I do that?" --history "How do I use expo-router?"
  *   npx tsx scripts/ask.ts "how do I add in-app purchases" --k 5   # triggers a retry
  *   npx tsx scripts/ask.ts "how do I upload an image" --naive      # compare
+ *   npx tsx scripts/ask.ts "pressable or touchable opacity" --course   # force COURSE
  */
 import "dotenv/config";
 import { prisma } from "../lib/prisma";
@@ -55,6 +56,7 @@ async function main() {
   // Live progress, mirroring exactly what the chat route will stream to the UI.
   const result = await runRetrievalPipeline(question, {
     history,
+    courseMode: flags.has("--course"),
     limit: K,
     onEvent: (event) => {
       switch (event.type) {
@@ -85,9 +87,12 @@ async function main() {
           );
           break;
         case "graded": {
-          const verdict = event.sufficient
-            ? "\x1b[32msufficient\x1b[0m"
-            : "\x1b[33mINSUFFICIENT\x1b[0m";
+          const verdict =
+            event.coverage === "full"
+              ? "\x1b[32mfull\x1b[0m"
+              : event.coverage === "partial"
+                ? "\x1b[36mPARTIAL\x1b[0m"
+                : "\x1b[33mNONE\x1b[0m";
           console.log(
             `${bold("→ GRADE")}     pass ${event.attempt} · score ${event.score}/10 · ${verdict}`,
           );
@@ -141,9 +146,13 @@ async function main() {
       ),
     );
 
-    if (!result.sufficient) {
+    if (result.coverage === "partial") {
       console.log(
-        "\x1b[33mretrieval never cleared the bar — the answer step must say the course does not cover this\x1b[0m",
+        "\x1b[36mpartial — on topic but not a complete answer; the answer step explains it and still cites\x1b[0m",
+      );
+    } else if (result.coverage === "none") {
+      console.log(
+        "\x1b[33mnone — the answer step must say the course does not cover this\x1b[0m",
       );
     }
   }

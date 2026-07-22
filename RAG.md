@@ -314,7 +314,29 @@ everything else is inference about what they meant.
 ### 3.5 Corrective RAG — `lib/rag/grade.ts`
 
 Before generating, a cheap model scores the retrieved set 0-10 and marks which
-chunks are actually relevant. Below 6, the set is not good enough to answer from.
+chunks are actually relevant.
+
+The score maps to **three** outcomes, not two:
+
+| Score | Coverage | What the answer step does |
+|---|---|---|
+| 6-10 | `full` | answer from the excerpts, cite them |
+| 4-5 | `partial` | answer from own knowledge, **still cite** |
+| 0-3 | `none` | say the course doesn't cover it |
+
+The middle band was originally folded into "insufficient", and that was a real
+bug. Asked *"which is better, Pressable or TouchableOpacity?"*, retrieval did its
+job — the retry loop surfaced three Module 2 clips that teach Pressable — and the
+grader scored them **4**, correctly: the course demonstrates both components but
+never delivers a head-to-head verdict, so the excerpts genuinely do not answer
+the question *as asked*. Being below the threshold, those clips were dropped and
+the learner got a general answer with **no timestamps**, despite the course
+covering the topic at 9:23.
+
+4-5 is exactly the band the rubric calls *"the right topic area, but the specific
+thing asked is not shown"*. Comparisons and judgement calls land there constantly,
+because courses demonstrate things without ranking them. The right response is to
+answer the question properly and *also* point at what the course does teach.
 
 Why this matters: **retrieval failure is invisible at generation time.** The model
 gets *some* transcript, and a fluent model will write a confident answer from

@@ -73,7 +73,7 @@ async function main() {
 
   console.log(
     dim(
-      `\n  route=${pipeline.route.route} sufficient=${pipeline.sufficient} retrieval=${pipeline.totalMs}ms`,
+      `\n  route=${pipeline.route.route} coverage=${pipeline.coverage} retrieval=${pipeline.totalMs}ms`,
     ),
   );
 

@@ -1,4 +1,4 @@
-import { gradeRetrieval, type RetrievalGrade } from "./grade";
+import { type Coverage, gradeRetrieval, type RetrievalGrade } from "./grade";
 import {
   expandToSegments,
   getCourseOutline,
@@ -51,7 +51,7 @@ export type PipelineEvent =
   | { type: "routed"; route: RouteDecision }
   | { type: "transformed"; transformed: TransformedQuery }
   | { type: "retrieved"; attempt: number; count: number; modules: number[] }
-  | { type: "graded"; attempt: number; score: number; sufficient: boolean }
+  | { type: "graded"; attempt: number; score: number; coverage: Coverage }
   | { type: "retrying"; queries: string[] };
 
 export interface PipelineOptions {
@@ -83,10 +83,11 @@ export interface PipelineResult {
   grade: RetrievalGrade | null;
   attempts: number;
   /**
-   * False when retrieval never cleared the bar. The answer step must say so
-   * rather than confabulating from whatever was returned.
+   * How well the excerpts answer the question. "partial" is the interesting one:
+   * the course covers the topic but not the exact ask, so the answer explains it
+   * and still cites where the related material is taught.
    */
-  sufficient: boolean;
+  coverage: Coverage;
   timings: StageTiming[];
   totalMs: number;
 }
@@ -146,7 +147,7 @@ function emptyResult(
     lessons: new Map(),
     grade: null,
     attempts: 0,
-    sufficient: true,
+    coverage: "full",
     timings,
     totalMs: Date.now() - startedAt,
   };
@@ -221,7 +222,7 @@ export async function runRetrievalPipeline(
     type: "graded",
     attempt: 1,
     score: grade.score,
-    sufficient: grade.sufficient,
+    coverage: grade.coverage,
   });
 
   // Corrective loop. Bounded hard: each additional attempt costs a refine, a
@@ -230,7 +231,7 @@ export async function runRetrievalPipeline(
   for (
     let attempt = 2;
     attempt <= maxAttempts &&
-    !grade.sufficient &&
+    grade.coverage !== "full" &&
     grade.score >= RETRY_SCORE_FLOOR;
     attempt++
   ) {
@@ -290,7 +291,7 @@ export async function runRetrievalPipeline(
       type: "graded",
       attempt,
       score: grade.score,
-      sufficient: grade.sufficient,
+      coverage: grade.coverage,
     });
   }
 
@@ -304,9 +305,12 @@ export async function runRetrievalPipeline(
       ? grade.relevantIndices.map((i) => results[i]).filter(Boolean)
       : results;
 
+  // "partial" keeps its full allowance: those chunks are on-topic, they just do
+  // not settle the question, and they are exactly what the citation list is for.
+  // Only a genuine miss gets narrowed.
   const chunks = relevant.slice(
     0,
-    grade.sufficient ? limit : Math.min(limit, INSUFFICIENT_LIMIT),
+    grade.coverage === "none" ? Math.min(limit, INSUFFICIENT_LIMIT) : limit,
   );
 
   // Independent lookups against the same database, so they go together rather
@@ -327,7 +331,7 @@ export async function runRetrievalPipeline(
     lessons,
     grade,
     attempts: timings.filter((t) => t.stage.startsWith("retrieve.")).length,
-    sufficient: grade.sufficient,
+    coverage: grade.coverage,
     timings,
     totalMs: Date.now() - startedAt,
   };
